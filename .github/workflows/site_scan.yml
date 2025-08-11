@@ -1,50 +1,49 @@
 name: Site Scan
+
 on:
   workflow_dispatch:
     inputs:
       start_url:
-        description: 'Start-URL (wird gecrawlt)'
+        description: 'Start-URL für den Scan'
         required: true
-        default: 'https://www.w3.org/WAI/demos/bad/'
+        default: 'https://example.com'
       max_pages:
-        description: 'Max. Seiten'
+        description: 'Maximale Anzahl zu crawlender Seiten'
         required: false
         default: '50'
-      max_depth:
-        description: 'Max. Tiefe'
-        required: false
-        default: '3'
-      respect_robots:
-        description: 'robots.txt respektieren? (true/false)'
+      check_downloads:
+        description: 'Downloads (PDF/DOCX/PPTX) prüfen'
         required: false
         default: 'true'
 
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: backend
+    timeout-minutes: 60
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: 20
+
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install Playwright
-        run: npx playwright install --with-deps
-      - name: Run site scan
+        run: npm install
+        working-directory: backend
+
+      - name: Run crawl-scan
         run: |
-          npm run site-scan -- \
-            --start_url="${{ github.event.inputs.start_url }}" \
-            --max_pages="${{ github.event.inputs.max_pages }}" \
-            --max_depth="${{ github.event.inputs.max_depth }}" \
-            --respect_robots="${{ github.event.inputs.respect_robots }}" \
-            --out=out
-      - name: Archive results
-        uses: actions/upload-artifact@v4
+          START_URL=${{ github.event.inputs.start_url }} \
+          MAX_PAGES=${{ github.event.inputs.max_pages }} \
+          CHECK_DOWNLOADS=${{ github.event.inputs.check_downloads }} \
+          npm run crawl-scan
+        working-directory: backend
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
           name: accesschecker-site-scan
-          path: backend/out/*
+          path: backend/out
