@@ -15,7 +15,7 @@
     "@axe-core/playwright": "^4.10.0",
     "commander": "^12.1.0",
     "fastify": "^4.28.1",
-    "fastify-cors": "^8.5.0",
+    "@fastify/cors": "^8.5.0",
     "nunjucks": "^3.2.4",
     "playwright": "^1.46.0",
     "pino": "^9.3.2",
