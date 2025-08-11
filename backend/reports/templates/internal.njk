@@ -1,76 +1,82 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <title>AccessChecker – Interner Bericht</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Interner Barrierefreiheitsbericht</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-    h1,h2,h3 { margin: 0.6em 0; }
-    .meta { font-size: 14px; color: #333; }
-    .badge { display: inline-block; padding: 6px 10px; border-radius: 8px; color: #fff; font-weight: 700; }
-    .green { background: #1f8a3b; }
-    .yellow { background: #b58900; }
-    .red { background: #d11a2a; }
-    table { border-collapse: collapse; width: 100%; margin: 12px 0 24px; }
-    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
-    th { background: #f6f7f9; text-align: left; }
-    code { background: #f2f2f2; padding: 2px 4px; border-radius: 4px; }
-    .small { font-size: 12px; color: #666; }
+    body { font-family: Arial, sans-serif; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 6px; }
+    th { background: #eee; }
+    h1, h2 { margin-top: 30px; }
   </style>
 </head>
 <body>
-  <h1>Interner Barrierefreiheitsbericht</h1>
-  <div class="meta">
-    <div><strong>Ziel-URL:</strong> {{ url }}</div>
-    <div><strong>Datum:</strong> {{ date }}</div>
-    <div><strong>Scanner-Versionen:</strong> Playwright + axe-core</div>
-    <div><strong>Gesamtergebnis:</strong>
-      {% if score >= 90 %}
-      <span class="badge green">GRÜN ({{ score }} / 100)</span>
-      {% elif score >= 75 %}
-      <span class="badge yellow">GELB ({{ score }} / 100)</span>
-      {% else %}
-      <span class="badge red">ROT ({{ score }} / 100)</span>
-      {% endif %}
-    </div>
-  </div>
 
-  <h2>Zusammenfassung</h2>
-  <p>Gefundene Verstöße: <strong>{{ totals.violations }}</strong> • Warnungen: <strong>{{ totals.incomplete }}</strong></p>
+<h1>Interner Barrierefreiheitsbericht</h1>
+<p>Start-URL: {{ scan.startUrl }}</p>
+<p>Datum: {{ scan.date }}</p>
+<p>Gesamt-Score: {{ scan.score }}/100</p>
+<p>Gecrawlte Seiten: {{ scan.pagesCrawled }}</p>
+<p>Gefundene Downloads: {{ scan.downloadsFound }}</p>
 
-  <h2>Details (axe-core)</h2>
+<h2>Gefundene Verstöße</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Seite</th>
+      <th>Regel-ID</th>
+      <th>Beschreibung</th>
+      <th>WCAG</th>
+      <th>BITV</th>
+      <th>EN 301 549</th>
+      <th>Rechtlicher Kontext</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for issue in issues %}
+    <tr>
+      <td>{{ issue.url }}</td>
+      <td>{{ issue.id }}</td>
+      <td>{{ issue.description }}</td>
+      <td>{{ issue.wcagRefs | join(', ') }}</td>
+      <td>{{ issue.bitvRefs | join(', ') }}</td>
+      <td>{{ issue.en301549Refs | join(', ') }}</td>
+      <td>{{ issue.legalContext }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Prüfung von Downloads</h2>
+{% if downloads_report.length > 0 %}
   <table>
     <thead>
       <tr>
-        <th>Regel / WCAG</th><th>Schwere</th><th>Beschreibung</th><th>Beispiele</th>
+        <th>Datei</th>
+        <th>Typ</th>
+        <th>Check</th>
+        <th>Status</th>
+        <th>Details</th>
       </tr>
     </thead>
     <tbody>
-      {% for v in violations %}
-      <tr>
-        <td>
-          <strong>{{ v.id }}</strong><br/>
-          <span class="small">{{ v.tags | join(', ') }}</span>
-        </td>
-        <td>{{ v.impact or 'n/a' }}</td>
-        <td>{{ v.help }}</td>
-        <td>
-          <ul>
-          {% for n in v.nodes | slice(0,3) %}
-            <li><code>{{ n.target[0] }}</code>: {{ n.failureSummary | replace('\n', ' ') }}</li>
-          {% endfor %}
-          </ul>
-        </td>
-      </tr>
+      {% for file in downloads_report %}
+        {% for check in file.checks %}
+        <tr>
+          <td>{{ file.url }}</td>
+          <td>{{ file.type }}</td>
+          <td>{{ check.name }}</td>
+          <td>{{ check.passed ? "OK" : "Fehler" }}</td>
+          <td>{{ check.details }}</td>
+        </tr>
+        {% endfor %}
       {% endfor %}
     </tbody>
   </table>
+{% else %}
+  <p>Keine Downloads oder keine Download-Prüfung aktiviert.</p>
+{% endif %}
 
-  <h3>Hinweis</h3>
-  <p class="small">
-    Dieser interne Bericht basiert auf einem automatisierten Erstcheck (axe-core). Für vollständige Konformität
-    sind weitere Prüfungen (z. B. dynamische Interaktionen, PDFs, manuelle Stichproben) einzuplanen.
-  </p>
 </body>
 </html>
