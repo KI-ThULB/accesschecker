@@ -2,21 +2,24 @@
   "name": "accesschecker-backend",
   "version": "0.2.0",
   "type": "module",
+  "main": "src/api/server.ts",
   "scripts": {
-    "start": "node dist/index.js",
-    "build": "tsc",
-    "crawl-scan": "ts-node scripts/crawl-scan.ts"
+    "hello-scan": "ts-node --esm scripts/hello-scan.ts",
+    "crawl-scan": "ts-node --esm scripts/crawl-scan.ts",
+    "start": "ts-node --esm src/api/server.ts"
   },
   "dependencies": {
-    "@axe-core/playwright": "^4.8.2",
+    "@playwright/test": "^1.45.0",
+    "axe-core": "^4.7.0",
+    "fastify": "^4.28.1",
+    "fastify-cors": "^8.2.1",
     "node-fetch": "^3.3.2",
-    "pdf-lib": "^1.17.1",
-    "playwright": "^1.44.0",
-    "unzipper": "^0.10.11"
+    "p-limit": "^4.0.0",
+    "pdfkit": "^0.13.0"
   },
   "devDependencies": {
-    "@types/node": "^20.4.2",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.4.0"
+    "@types/node": "^20.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }
