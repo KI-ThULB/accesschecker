@@ -6,7 +6,7 @@ on:
       start_url:
         description: 'Start-URL für den Scan'
         required: true
-        default: 'https://example.com'
+        default: 'https://www.w3.org/WAI/demos/bad/'
       max_pages:
         description: 'Maximale Anzahl zu crawlender Seiten'
         required: false
@@ -31,19 +31,20 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
         working-directory: backend
 
-      - name: Install Playwright
+      - name: Install Playwright (browsers + deps)
         run: npx playwright install --with-deps
         working-directory: backend
 
-      - name: Run crawl-scan
+      # Wichtig: ts-node mit ESM benutzen (statt npm run crawl-scan)
+      - name: Run crawl-scan (ESM)
         run: |
-          START_URL=${{ github.event.inputs.start_url }} \
-          MAX_PAGES=${{ github.event.inputs.max_pages }} \
-          CHECK_DOWNLOADS=${{ github.event.inputs.check_downloads }} \
-          npm run crawl-scan
+          export START_URL="${{ github.event.inputs.start_url }}"
+          export MAX_PAGES="${{ github.event.inputs.max_pages }}"
+          export CHECK_DOWNLOADS="${{ github.event.inputs.check_downloads }}"
+          npx ts-node --esm scripts/crawl-scan.ts
         working-directory: backend
 
       - name: Upload artifact
