@@ -3,10 +3,9 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-  "crawl-scan": "tsx scripts/crawl-scan.ts",
-  "build": "tsc -p tsconfig.json",
-  "typecheck": "tsc -p tsconfig.json --noEmit"
-}
+    "crawl-scan": "tsx scripts/crawl-scan.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",
