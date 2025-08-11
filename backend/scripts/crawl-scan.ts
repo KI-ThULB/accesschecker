@@ -1,114 +1,268 @@
-import path from 'path';
-import fs from 'fs';
-import { chromium } from 'playwright';
-import AxeBuilder from '@axe-core/playwright';
-import { checkDownloads } from '../scanners/downloads';
-import rulesMapping from '../config/rules_mapping.json';
+/**
+ * AccessChecker – Site Crawler + axe-core Scan (stabile ESM/TS-Version)
+ * - BFS-Crawl derselben Origin (limitierbar über MAX_PAGES)
+ * - Vorsichtige Interaktionen (Menüs/Tabs), damit dynamische Bereiche sichtbar sind
+ * - axe-core-Analyse pro Seite, inkl. Norm-Mapping (WCAG/BITV/EN)
+ * - Optionale Download-Prüfung (PDF/DOCX/PPTX) via scanners/downloads.ts
+ * - Artefakte: scan.json, pages.json, issues.json, downloads.json, downloads_report.json
+ *
+ * Start über ts-node (ESM):
+ *   npx ts-node --esm scripts/crawl-scan.ts
+ *
+ * Steuerung per Env:
+ *   START_URL         (Pflicht; z. B. https://www.w3.org/WAI/demos/bad/)
+ *   MAX_PAGES         (Standard 50)
+ *   CHECK_DOWNLOADS   (true/false; Standard true)
+ *   OUTPUT_DIR        (Standard ./out)
+ */
 
-interface PageResult {
+import path from "path";
+import { promises as fs } from "fs";
+import { chromium, Page } from "playwright";
+import { AxeBuilder } from "@axe-core/playwright";
+import { checkDownloads } from "../scanners/downloads.js";
+// JSON-Import stabil, unabhängig von tsconfig:
+import rulesMapping from "../config/rules_mapping.json" assert { type: "json" };
+
+type Violation = {
+  id: string;
+  impact?: "minor" | "moderate" | "serious" | "critical";
+  help?: string;
+  nodes?: { target: string[]; failureSummary?: string }[];
+  // wird unten ergänzt:
+  wcagRefs?: string[];
+  bitvRefs?: string[];
+  en301549Refs?: string[];
+  legalContext?: string;
+};
+
+type PageResult = {
   url: string;
-  violations: any[];
+  violations: Violation[];
+  incomplete: any[];
+};
+
+function envBool(name: string, fallback: boolean): boolean {
+  const v = (process.env[name] || "").toLowerCase().trim();
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return fallback;
 }
 
-(async () => {
-  const startUrl = process.env.START_URL || 'https://example.com';
-  const maxPages = Number(process.env.MAX_PAGES || 50);
-  const checkDownloadsFlag = process.env.CHECK_DOWNLOADS === 'true';
+function normalizeUrl(u: string): string {
+  try {
+    const url = new URL(u);
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return u;
+  }
+}
 
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
+function isHttp(u: string): boolean {
+  return /^https?:\/\//i.test(u);
+}
+
+function isDownloadLink(u: string): boolean {
+  return /\.(pdf|docx?|pptx?)($|\?)/i.test(u);
+}
+
+async function ensureDir(dir: string) {
+  await fs.mkdir(dir, { recursive: true });
+}
+
+function computeScore(violations: Violation[]): number {
+  let score = 100;
+  const weights: Record<string, number> = {
+    critical: 6,
+    serious: 4,
+    moderate: 2,
+    minor: 1,
+  };
+  for (const v of violations) {
+    const w = weights[v.impact || "moderate"] || 2;
+    const count = Math.min(5, v.nodes?.length ?? 1);
+    score -= Math.min(35, w * count);
+  }
+  return Math.max(0, Math.min(100, score));
+}
+
+async function gentleInteractions(page: Page) {
+  // Ein paar sichere „Antipper“, damit Menüs/Tabs sichtbar werden, ohne die Seite zu zerstören
+  try {
+    await page.$$eval(
+      "[aria-haspopup], [role=menuitem], button, summary",
+      (els: Element[]) => {
+        for (const el of els.slice(0, 10)) {
+          try {
+            (el as HTMLElement).click();
+          } catch {}
+        }
+      }
+    );
+  } catch {}
+  try {
+    const tabs = await page.$$("[role='tab']");
+    for (const t of tabs.slice(0, 6)) {
+      try {
+        await t.click();
+        await page.waitForTimeout(100);
+      } catch {}
+    }
+  } catch {}
+}
+
+async function main() {
+  const startUrlRaw = process.env.START_URL || "";
+  if (!startUrlRaw) {
+    console.error("❌ START_URL ist nicht gesetzt.");
+    process.exit(2);
+  }
+  const START_URL = normalizeUrl(startUrlRaw);
+  const MAX_PAGES = Number(process.env.MAX_PAGES || 50);
+  const CHECK_DOWNLOADS = envBool("CHECK_DOWNLOADS", true);
+  const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
+
+  await ensureDir(OUTPUT_DIR);
+
+  const origin = new URL(START_URL).origin;
   const visited = new Set<string>();
-  const toVisit = [startUrl];
+  const queue: string[] = [START_URL];
   const pageResults: PageResult[] = [];
-  const downloadsFound: string[] = [];
+  const downloadsFound = new Set<string>();
 
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    userAgent: "AccessCheckerBot/0.1 (+https://example.invalid)",
+  });
   const page = await context.newPage();
 
-  while (toVisit.length > 0 && visited.size < maxPages) {
-    const url = toVisit.shift()!;
-    if (visited.has(url)) continue;
-    visited.add(url);
+  while (queue.length && visited.size < MAX_PAGES) {
+    const current = normalizeUrl(queue.shift()!);
+    if (visited.has(current)) continue;
+    visited.add(current);
 
     try {
-      console.log(`Scanning ${url}`);
-      await page.goto(url, { waitUntil: 'networkidle' });
+      console.log(`🔎 Scanne: ${current}`);
+      await page.goto(current, { waitUntil: "networkidle", timeout: 45_000 });
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(600);
+      await gentleInteractions(page);
 
-      // Dynamische Interaktionen
-      await page.evaluate(() => {
-        document.querySelectorAll('[aria-haspopup], nav button').forEach(el => (el as HTMLElement).click());
-        document.querySelectorAll('[role="tab"]').forEach(el => (el as HTMLElement).click());
-      });
-
-      // Accessibility-Scan
+      // axe-core Analyse
       const axe = new AxeBuilder({ page });
-      const results = await axe.analyze();
+      const res = await axe.analyze();
+      const violations: Violation[] = (res.violations || []) as any[];
+      const incomplete: any[] = (res.incomplete || []) as any[];
 
-      // Norm-Mapping hinzufügen
-      results.violations.forEach(v => {
-        const mapEntry = (rulesMapping as any[]).find(r => r.axeRuleId === v.id);
-        if (mapEntry) {
-          (v as any).wcagRefs = mapEntry.wcagRefs;
-          (v as any).bitvRefs = mapEntry.bitvRefs;
-          (v as any).en301549Refs = mapEntry.en301549Refs;
-          (v as any).legalContext = mapEntry.legalContext;
+      // Norm-Mapping ergänzen
+      for (const v of violations) {
+        const map = (rulesMapping as any[]).find((m) => m.axeRuleId === v.id);
+        if (map) {
+          v.wcagRefs = map.wcagRefs || [];
+          v.bitvRefs = map.bitvRefs || [];
+          v.en301549Refs = map.en301549Refs || [];
+          v.legalContext = map.legalContext || "";
         }
-      });
+      }
 
-      pageResults.push({ url, violations: results.violations });
+      pageResults.push({ url: current, violations, incomplete });
 
-      // Links sammeln
-      const links = await page.$$eval('a[href]', as => as.map(a => (a as HTMLAnchorElement).href));
-      links.forEach(link => {
-        if (link.startsWith(startUrl) && !visited.has(link) && !toVisit.includes(link)) {
-          toVisit.push(link);
+      // Links einsammeln
+      const links: string[] = await page.$$eval("a[href]", (els) =>
+        (els as HTMLAnchorElement[]).map((a) => (a as any).href as string)
+      );
+
+      for (const raw of links) {
+        if (!isHttp(raw)) continue;
+        const href = normalizeUrl(raw);
+        // nur gleiche Origin crawlen
+        if (!sameOrigin(href, origin)) continue;
+
+        if (isDownloadLink(href)) {
+          downloadsFound.add(href);
+          continue;
         }
-      });
-
-      // Downloads erkennen
-      links.forEach(link => {
-        if (/\.(pdf|docx|pptx)(\?.*)?$/i.test(link)) {
-          downloadsFound.push(link);
+        if (!visited.has(href) && !queue.includes(href)) {
+          queue.push(href);
         }
-      });
-
-    } catch (err) {
-      console.error(`Error scanning ${url}:`, err);
+      }
+    } catch (e) {
+      console.warn(`⚠️  Fehler beim Scannen von ${current}:`, (e as any)?.message || e);
     }
   }
 
   await browser.close();
 
-  // Downloads prüfen
-  let downloadsReport: any[] = [];
-  if (checkDownloadsFlag && downloadsFound.length > 0) {
-    downloadsReport = await checkDownloads(downloadsFound);
+  // Downloads prüfen (optional)
+  let downloadsReport: Array<{
+    url: string;
+    type: string;
+    checks: { name: string; passed: boolean; details?: string }[];
+  }> = [];
+  if (CHECK_DOWNLOADS && downloadsFound.size) {
+    const toCheck = Array.from(downloadsFound).slice(0, 25); // Limit für Laufzeit
+    try {
+      downloadsReport = await checkDownloads(toCheck);
+    } catch (e) {
+      console.warn("⚠️  Download-Analyse fehlgeschlagen:", (e as any)?.message || e);
+    }
   }
 
-  // Ergebnisse speichern
-  const outDir = process.env.OUTPUT_DIR || path.join(process.cwd(), 'out');
-  fs.mkdirSync(outDir, { recursive: true });
+  // Aggregation & Speichern
+  const allViolations = pageResults.flatMap((p) => p.violations);
+  const score = computeScore(allViolations);
 
-  fs.writeFileSync(path.join(outDir, 'pages.json'), JSON.stringify([...visited], null, 2));
-  fs.writeFileSync(path.join(outDir, 'issues.json'), JSON.stringify(pageResults.flatMap(p => p.violations), null, 2));
-  fs.writeFileSync(path.join(outDir, 'downloads.json'), JSON.stringify(downloadsFound, null, 2));
-  fs.writeFileSync(path.join(outDir, 'downloads_report.json'), JSON.stringify(downloadsReport, null, 2));
-  fs.writeFileSync(path.join(outDir, 'scan.json'), JSON.stringify({
-    startUrl,
+  const scanSummary = {
+    startUrl: START_URL,
     date: new Date().toISOString(),
-    score: calcScore(pageResults),
     pagesCrawled: visited.size,
-    downloadsFound: downloadsFound.length,
+    downloadsFound: downloadsFound.size,
+    score,
     totals: {
-      violations: pageResults.reduce((sum, p) => sum + p.violations.length, 0),
-      incomplete: 0
-    }
-  }, null, 2));
+      violations: allViolations.length,
+      incomplete: pageResults.reduce((a, p) => a + p.incomplete.length, 0),
+    },
+  };
 
-  console.log('Scan complete.');
-})();
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "scan.json"),
+    JSON.stringify(scanSummary, null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "pages.json"),
+    JSON.stringify(Array.from(visited), null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "issues.json"),
+    JSON.stringify(allViolations, null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "downloads.json"),
+    JSON.stringify(Array.from(downloadsFound), null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "downloads_report.json"),
+    JSON.stringify(downloadsReport, null, 2),
+    "utf-8"
+  );
 
-function calcScore(results: PageResult[]) {
-  const totalViolations = results.reduce((sum, p) => sum + p.violations.length, 0);
-  if (totalViolations === 0) return 100;
-  return Math.max(0, 100 - totalViolations);
+  console.log("✅ Scan abgeschlossen. Artefakte in:", OUTPUT_DIR);
 }
+
+main().catch((err) => {
+  console.error("❌ Unerwarteter Fehler:", err);
+  process.exit(1);
+});
