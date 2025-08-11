@@ -1,0 +1,50 @@
+name: Site Scan
+on:
+  workflow_dispatch:
+    inputs:
+      start_url:
+        description: 'Start-URL (wird gecrawlt)'
+        required: true
+        default: 'https://www.w3.org/WAI/demos/bad/'
+      max_pages:
+        description: 'Max. Seiten'
+        required: false
+        default: '50'
+      max_depth:
+        description: 'Max. Tiefe'
+        required: false
+        default: '3'
+      respect_robots:
+        description: 'robots.txt respektieren? (true/false)'
+        required: false
+        default: 'true'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+      - name: Run site scan
+        run: |
+          npm run site-scan -- \
+            --start_url="${{ github.event.inputs.start_url }}" \
+            --max_pages="${{ github.event.inputs.max_pages }}" \
+            --max_depth="${{ github.event.inputs.max_depth }}" \
+            --respect_robots="${{ github.event.inputs.respect_robots }}" \
+            --out=out
+      - name: Archive results
+        uses: actions/upload-artifact@v4
+        with:
+          name: accesschecker-site-scan
+          path: backend/out/*
