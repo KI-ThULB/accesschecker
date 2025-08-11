@@ -38,13 +38,12 @@ jobs:
         run: npx playwright install --with-deps
         working-directory: backend
 
-      # Wichtig: ts-node mit ESM benutzen (statt npm run crawl-scan)
-      - name: Run crawl-scan (ESM)
+      - name: Run crawl-scan (via tsx)
         run: |
           export START_URL="${{ github.event.inputs.start_url }}"
           export MAX_PAGES="${{ github.event.inputs.max_pages }}"
           export CHECK_DOWNLOADS="${{ github.event.inputs.check_downloads }}"
-          npx ts-node --esm scripts/crawl-scan.ts
+          npx tsx scripts/crawl-scan.ts
         working-directory: backend
 
       - name: Upload artifact
