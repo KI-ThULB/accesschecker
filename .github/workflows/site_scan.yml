@@ -8,7 +8,7 @@ on:
         required: true
         default: 'https://www.w3.org/WAI/demos/bad/'
       max_pages:
-        description: 'Maximale Anzahl zu crawlender Seiten'
+        description: 'Max. Seiten'
         required: false
         default: '50'
       check_downloads:
@@ -25,12 +25,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm install --no-audit --no-fund
         working-directory: backend
 
@@ -38,16 +38,16 @@ jobs:
         run: npx playwright install --with-deps
         working-directory: backend
 
-      - name: Run crawl-scan (via tsx)
-        run: |
-          export START_URL="${{ github.event.inputs.start_url }}"
-          export MAX_PAGES="${{ github.event.inputs.max_pages }}"
-          export CHECK_DOWNLOADS="${{ github.event.inputs.check_downloads }}"
-          npx tsx scripts/crawl-scan.ts
+      - name: Run crawl-scan (tsx)
+        env:
+          START_URL: ${{ github.event.inputs.start_url }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages }}
+          CHECK_DOWNLOADS: ${{ github.event.inputs.check_downloads }}
+        run: npx tsx scripts/crawl-scan.ts
         working-directory: backend
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: accesschecker-site-scan
-          path: backend/out
+          path: backend/out/**
