@@ -1,9 +1,15 @@
 {
-  "maxPages": 100,
+  "sameOriginOnly": true,
+  "respectRobotsTxt": true,
+  "seedSitemap": true,
+  "respectHashRoutes": true,
+  "checkIframes": true,
+  "consentClick": true,
+  "maxPages": 50,
   "maxDepth": 3,
   "timeoutMs": 45000,
-  "respectRobotsTxt": true,
-  "sameOriginOnly": true,
   "waitAfterLoadMs": 600,
-  "userAgent": "AccessCheckerBot/0.1 (+https://example.invalid)"
+  "waitMinMs": 200,
+  "waitMaxMs": 600,
+  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)"
 }
