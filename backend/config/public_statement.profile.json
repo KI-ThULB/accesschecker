@@ -1,26 +1,36 @@
 {
   "organisationName": "Ihre Organisation",
   "websiteOwner": "Ihre Organisationseinheit / Dienststelle",
+  "jurisdiction": {
+    "country": "DE",
+    "federalState": "Thüringen"
+  },
   "contact": {
     "email": "kontakt@example.org",
     "phone": "+49 000 000000",
-    "url": "https://www.example.org/kontakt"
+    "url": "https://www.example.org/kontakt",
+    "responseTimeDays": 14
   },
   "enforcement": {
-    "name": "Zuständige Durchsetzungsstelle",
+    "name": "Zuständige Durchsetzungsstelle (Land)",
     "url": "https://www.example.org/durchsetzungsstelle",
     "email": "durchsetzung@example.org"
   },
   "legal": {
     "standard": "WCAG 2.1 / EN 301 549 / BITV 2.0",
-    "method": "Automatisierte Selbstbewertung mit axe-core und heuristischen Dokumentenprüfungen",
+    "method": "Automatisierte Selbstbewertung (axe-core) + heuristische Dokumentenprüfungen",
     "language": "de-DE"
+  },
+  "statement": {
+    "updateFrequencyDays": 365,
+    "disproportionateBurden": [],
+    "outOfScope": []
   },
   "manualFindings": [
     {
-      "title": "Beispiel: PDF-Formulare ohne korrekte Tag-Struktur",
-      "description": "Mehrere ältere PDF-Formulare sind nicht getaggt und nicht per Screenreader nutzbar.",
-      "reason": "noch in Umsetzung"
+      "title": "Beispiel: PDF-Formulare ohne Tag-Struktur",
+      "description": "Ältere Formulare sind nicht getaggt und nicht per Screenreader nutzbar.",
+      "reason": "in Umsetzung"
     }
   ]
 }
