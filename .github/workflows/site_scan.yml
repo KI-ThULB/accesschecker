@@ -4,13 +4,37 @@ on:
   workflow_dispatch:
     inputs:
       start_url:
-        description: 'Start-URL für den Scan'
+        description: 'Start-URL'
         required: true
         default: 'https://www.w3.org/WAI/demos/bad/'
       max_pages:
         description: 'Max. Seiten'
         required: false
         default: '50'
+      max_depth:
+        description: 'Max. Tiefe'
+        required: false
+        default: '3'
+      respect_robots:
+        description: 'robots.txt respektieren (true/false)'
+        required: false
+        default: 'true'
+      seed_sitemap:
+        description: 'sitemap.xml als Seed nutzen (true/false)'
+        required: false
+        default: 'true'
+      respect_hash_routes:
+        description: 'Hash-Routen (#/...) als eigene Seiten behandeln'
+        required: false
+        default: 'true'
+      check_iframes:
+        description: 'iframes (same-origin) zusätzlich scannen'
+        required: false
+        default: 'true'
+      consent_click:
+        description: 'Consent-Buttons (Cookie-Banner) klicken'
+        required: false
+        default: 'true'
       check_downloads:
         description: 'Downloads (PDF/DOCX/PPTX) prüfen'
         required: false
@@ -19,7 +43,7 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     steps:
       - name: Checkout
@@ -42,6 +66,12 @@ jobs:
         env:
           START_URL: ${{ github.event.inputs.start_url }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
+          MAX_DEPTH: ${{ github.event.inputs.max_depth }}
+          RESPECT_ROBOTS: ${{ github.event.inputs.respect_robots }}
+          SEED_SITEMAP: ${{ github.event.inputs.seed_sitemap }}
+          RESPECT_HASH_ROUTES: ${{ github.event.inputs.respect_hash_routes }}
+          CHECK_IFRAMES: ${{ github.event.inputs.check_iframes }}
+          CONSENT_CLICK: ${{ github.event.inputs.consent_click }}
           CHECK_DOWNLOADS: ${{ github.event.inputs.check_downloads }}
         run: npx tsx scripts/crawl-scan.ts
         working-directory: backend
