@@ -1,11 +1,9 @@
 /**
- * Baut aus den JSON-Ergebnissen HTML + PDF (intern/öffentlich) in backend/out/.
- * Öffentlicher Bericht enthält Pflichtabschnitte nach EU-RL 2016/2102/BITV:
- * - Stand der Vereinbarkeit (vollständig/teilweise/nicht vereinbar)
- * - Nicht barrierefreie Inhalte (+ optionale manuelle Ergänzungen)
- * - Erstellungs-/Aktualisierungsdatum & Prüfverfahren
- * - Feedback/Kontakt
- * - Durchsetzungsverfahren (zuständige Stelle)
+ * Erzeugt HTML+PDF (intern/öffentlich) und eine maschinenlesbare Erklärung (public_statement.json)
+ * aus den Crawl-Artefakten in backend/out/. Öffentliche Erklärung entspricht inhaltlich dem EU-Muster
+ * (Richtlinie 2016/2102, Durchführungsbeschluss 2018/1523). Siehe Pflichtabschnitte: Vereinbarkeit,
+ * nicht barrierefreie Inhalte (+Begründungen), Erstellung/Prüfmethode, Feedback/Kontakt,
+ * Durchsetzungsverfahren.  // Quellenhinweis im README empfohlen.
  */
 
 import { promises as fs } from "node:fs";
@@ -24,44 +22,21 @@ type ScanSummary = {
 type Profile = {
   organisationName?: string;
   websiteOwner?: string;
-  contact?: { email?: string; phone?: string; url?: string };
+  jurisdiction?: { country?: string; federalState?: string };
+  contact?: { email?: string; phone?: string; url?: string; responseTimeDays?: number };
   enforcement?: { name?: string; url?: string; email?: string };
   legal?: { standard?: string; method?: string; language?: string };
+  statement?: {
+    updateFrequencyDays?: number;
+    disproportionateBurden?: string[]; // Inhalte, die aus Unverhältnismäßigkeit (Art. 5) herausgenommen sind
+    outOfScope?: string[];            // Inhalte außerhalb des Geltungsbereichs (z. B. Fremdinhalte)
+  };
   manualFindings?: { title: string; description?: string; reason?: string }[];
 };
 
 function escapeHtml(s: string) {
   return (s || "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as any)[m]);
 }
-
-function domainFromUrl(u: string) {
-  try { return new URL(u).origin; } catch { return u; }
-}
-
-function vereinbarkeitsStatus(violations: number, score: number) {
-  if (violations === 0) return { label: "vollständig vereinbar", level: "green" };
-  if (score >= 70) return { label: "teilweise vereinbar", level: "yellow" };
-  return { label: "nicht vereinbar", level: "red" };
-}
-
-function deriveTopFindings(issues: any[], limit = 8) {
-  const map = new Map<string, { help: string; wcag: string[]; count: number }>();
-  for (const v of issues) {
-    const key = v.id || v.help || "unbekannt";
-    const entry = map.get(key) || { help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
-    entry.count += 1;
-    if (Array.isArray(v.wcagRefs) && v.wcagRefs.length) entry.wcag = v.wcagRefs;
-    map.set(key, entry);
-  }
-  return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
-}
-
-function badge(level: "green" | "yellow" | "red") {
-  const cls = level === "green" ? "green" : level === "yellow" ? "yellow" : "red";
-  const txt = level === "green" ? "GRÜN" : level === "yellow" ? "GELB" : "ROT";
-  return `<span class="badge ${cls}">${txt}</span>`;
-}
-
 function cssBase() {
   return `
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:24px}
@@ -74,13 +49,33 @@ function cssBase() {
   h1,h2{margin-top:22px}
   `;
 }
+function domainFromUrl(u: string) { try { return new URL(u).origin; } catch { return u; } }
+function badge(level: "green"|"yellow"|"red") {
+  const cls = level === "green" ? "green" : level === "yellow" ? "yellow" : "red";
+  const txt = level === "green" ? "GRÜN" : level === "yellow" ? "GELB" : "ROT";
+  return `<span class="badge ${cls}">${txt}</span>`;
+}
+function vereinbarkeitsStatus(violations: number, score: number) {
+  if (violations === 0) return { label: "vollständig vereinbar", level: "green", code: "full" };
+  if (score >= 70) return { label: "teilweise vereinbar", level: "yellow", code: "partial" };
+  return { label: "nicht vereinbar", level: "red", code: "non" };
+}
+function deriveTopFindings(issues: any[], limit = 8) {
+  const map = new Map<string, { help: string; wcag: string[]; count: number }>();
+  for (const v of issues) {
+    const key = v.id || v.help || "unbekannt";
+    const entry = map.get(key) || { help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
+    entry.count += 1;
+    if (Array.isArray(v.wcagRefs) && v.wcagRefs.length) entry.wcag = v.wcagRefs;
+    map.set(key, entry);
+  }
+  return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
+}
 
 function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[]) {
   const rows = issues.slice(0, 300).map((v: any) => {
     const targets = (v.nodes || []).slice(0, 3).map((n: any) => `<code>${escapeHtml((n.target?.[0]||"").toString())}</code>`).join("<br/>");
-    const wcag = (v.wcagRefs || []).join(", ");
-    const bitv = (v.bitvRefs || []).join(", ");
-    const en = (v.en301549Refs || []).join(", ");
+    const wcag = (v.wcagRefs || []).join(", "); const bitv = (v.bitvRefs || []).join(", "); const en = (v.en301549Refs || []).join(", ");
     return `<tr>
       <td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.help||"")}</small></td>
       <td>${escapeHtml(v.impact||"n/a")}</td>
@@ -141,6 +136,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     `<li><b>${escapeHtml(m.title)}</b>${m.reason?` – <i>${escapeHtml(m.reason)}</i>`:""}${m.description?`<br/><small>${escapeHtml(m.description)}</small>`:""}</li>`
   ).join("");
 
+  const dispro = (profile.statement?.disproportionateBurden||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("");
+  const oos   = (profile.statement?.outOfScope||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("");
+
   return `<!doctype html><html lang="${escapeHtml(profile.legal?.language || "de-DE")}"><head>
     <meta charset="utf-8"/>
     <title>Erklärung zur Barrierefreiheit</title>
@@ -154,27 +152,28 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
        ${escapeHtml(profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0")}.</p>
 
     <h2>2. Nicht barrierefreie Inhalte</h2>
-    <p>Die nachstehenden Inhalte sind nicht barrierefrei:</p>
+    <p>Automatisiert ermittelte Schwerpunkte:</p>
     <ul>${topList}</ul>
     ${manual ? `<p>Zusätzliche Feststellungen:</p><ul>${manual}</ul>` : ""}
 
-    <h2>3. Erstellung dieser Erklärung</h2>
-    <p>Diese Erklärung wurde am ${escapeHtml(today)} erstellt und beruht auf einer 
-       automatisierten Selbstbewertung (<i>${escapeHtml(profile.legal?.method || "axe-core Analyse; heuristische Dokumentenprüfung")}</i>). 
-       Letzte technische Überprüfung: ${escapeHtml(summary.date)}.</p>
+    ${dispro ? `<h3>2.1 Inhalte, deren Barrierefreiheit eine unverhältnismäßige Belastung darstellt</h3><ul>${dispro}</ul>` : ""}
+    ${oos ? `<h3>2.2 Inhalte, die nicht in den Anwendungsbereich der Richtlinie fallen</h3><ul>${oos}</ul>` : ""}
 
-    <h2>4. Feedback und Kontaktangaben</h2>
-    <p>Sind Ihnen Mängel beim barrierefreien Zugang zu Inhalten aufgefallen? 
-       Schreiben Sie uns eine E-Mail oder nutzen Sie die Kontaktmöglichkeiten:</p>
+    <h2>3. Erstellung dieser Erklärung</h2>
+    <p>Erstellt am ${escapeHtml(today)}. Grundlage: ${escapeHtml(profile.legal?.method || "automatisierte Selbstbewertung")}.
+       Letzte technische Überprüfung: ${escapeHtml(summary.date)}.
+       Aktualisierung geplant alle ${escapeHtml(String(profile.statement?.updateFrequencyDays || 365))} Tage.</p>
+
+    <h2>4. Feedback und Kontakt</h2>
     <ul>
       ${profile.contact?.email ? `<li>E-Mail: <a href="mailto:${escapeHtml(profile.contact.email)}">${escapeHtml(profile.contact.email)}</a></li>` : ""}
       ${profile.contact?.phone ? `<li>Telefon: ${escapeHtml(profile.contact.phone)}</li>` : ""}
       ${profile.contact?.url ? `<li>Kontaktformular/Seite: <a href="${escapeHtml(profile.contact.url)}">${escapeHtml(profile.contact.url)}</a></li>` : ""}
     </ul>
+    ${profile.contact?.responseTimeDays ? `<p>Antwortzeit: in der Regel innerhalb von ${escapeHtml(String(profile.contact.responseTimeDays))} Tagen.</p>` : ""}
 
     <h2>5. Durchsetzungsverfahren</h2>
-    <p>Wenn auch nach Ihrem Feedback an ${escapeHtml(profile.organisationName || "die verantwortliche Stelle")} 
-       keine zufriedenstellende Lösung gefunden wurde, können Sie sich an die zuständige Durchsetzungsstelle wenden:</p>
+    <p>Wenn Sie keine zufriedenstellende Antwort erhalten, können Sie sich an die zuständige Durchsetzungsstelle wenden:</p>
     <ul>
       ${profile.enforcement?.name ? `<li>${escapeHtml(profile.enforcement.name)}</li>` : ""}
       ${profile.enforcement?.url ? `<li>Website: <a href="${escapeHtml(profile.enforcement.url)}">${escapeHtml(profile.enforcement.url)}</a></li>` : ""}
@@ -183,34 +182,68 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 
     <h2>6. Hinweise zu Dokumenten/Downloads</h2>
     <p>Prüfbare Dateien insgesamt: <b>${downloadsReport?.length || 0}</b>.
-       Nicht automatisch prüfbare Legacy-Formate (z. B. DOC/PPT) werden als solche gekennzeichnet und sollen sukzessive ersetzt werden.</p>
+       Legacy-Formate (DOC/PPT) werden als nicht automatisch prüfbar gekennzeichnet und sukzessive ersetzt.</p>
 
-    <p><small>Hinweis: Diese öffentliche Erklärung wird regelmäßig aktualisiert.</small></p>
+    <p><small>Diese Erklärung wird regelmäßig aktualisiert.</small></p>
   </body></html>`;
+}
+
+/** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile) {
+  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score);
+  const top = deriveTopFindings(issues, 8);
+  const preparedOn = new Date().toISOString().slice(0,10);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    "name": "Erklärung zur Barrierefreiheit",
+    "inLanguage": profile.legal?.language || "de-DE",
+    "about": domainFromUrl(summary.startUrl),
+    "dateCreated": preparedOn,
+    "dateModified": summary.date,
+    "accessibilitySummary": {
+      "conformanceStatus": status.code, // full | partial | non
+      "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
+      "method": profile.legal?.method || "automatisierte Selbstbewertung",
+      "topFindings": top.map(t => ({ text: t.help, wcag: t.wcag }))
+    },
+    "provider": {
+      "name": profile.organisationName || profile.websiteOwner || ""
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "feedback",
+      "email": profile.contact?.email || "",
+      "telephone": profile.contact?.phone || "",
+      "url": profile.contact?.url || ""
+    },
+    "isAccessibleForFree": true,
+    "jurisdiction": profile.jurisdiction || {}
+  };
 }
 
 async function main() {
   const outDir = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
   const summary: ScanSummary = JSON.parse(await fs.readFile(path.join(outDir, "scan.json"), "utf-8"));
   const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
-  let downloadsReport: any[] = [];
-  try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
+  let downloadsReport: any[] = []; try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
 
-  // Organisationsprofil laden
+  // Profil laden
   let profile: Profile = {};
-  try {
-    profile = JSON.parse(await fs.readFile(path.join(process.cwd(), "config", "public_statement.profile.json"), "utf-8"));
-  } catch {
-    profile = {};
-  }
+  try { profile = JSON.parse(await fs.readFile(path.join(process.cwd(), "config", "public_statement.profile.json"), "utf-8")); } catch {}
 
-  // HTML rendern
+  // HTML bauen
   const internalHtml = renderInternalHTML(summary, issues, downloadsReport);
   const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile);
 
   // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
+
+  // JSON-Erklärung speichern (maschinenlesbar)
+  const statementJson = buildStatementJSON(summary, issues, profile);
+  await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken
   const browser = await chromium.launch({ headless: true });
@@ -221,10 +254,10 @@ async function main() {
   await page.pdf({ path: path.join(outDir, "report_internal.pdf"), format: "A4", margin: { top: "16mm", bottom: "16mm", left: "16mm", right: "16mm" } });
 
   await page.setContent(publicHtml, { waitUntil: "domcontentloaded" });
-  await page.pdf({ path: path.join(outDir, "report_public.pdf"), format: "A4", margin: { top: "16mm", bottom: "16mm", left: "16mm", "right": "16mm" } });
+  await page.pdf({ path: path.join(outDir, "report_public.pdf"), format: "A4", margin: { top: "16mm", bottom: "16mm", left: "16mm", right: "16mm" } });
 
   await browser.close();
-  console.log("✅ Reports (intern/öffentlich) erzeugt.");
+  console.log("✅ Reports + maschinenlesbare Erklärung erzeugt.");
 }
 
 main().catch((e)=>{ console.error("Report-Build fehlgeschlagen:", e); process.exit(1); });
