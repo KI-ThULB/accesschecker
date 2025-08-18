@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-interface MappingEntry { axeRuleId: string; wcag?: string[]; bitv?: string[]; en?: string[]; }
+interface MappingEntry { axeRuleId: string; wcag?: string[]; bitv?: string[]; en301549?: string[]; }
 
 function fromTags(tags: string[] | undefined): string[] {
   const out: string[] = [];
@@ -17,7 +17,7 @@ function mapNorms(rule: any, mapping: Record<string, MappingEntry>, bitvMap: any
   let wcag: string[] = rule.wcagRefs || entry.wcag || [];
   if (!wcag.length) wcag = fromTags(rule.tags);
   let bitv: string[] = rule.bitvRefs || entry.bitv || [];
-  let en: string[] = rule.en301549Refs || entry.en || [];
+  let en: string[] = rule.en301549Refs || entry.en301549 || [];
   if (!bitv.length) bitv = wcag.map((w: string) => bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
   if (!en.length) en = wcag.map((w: string) => enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
   return { wcag, bitv, en, ok: wcag.length && bitv.length && en.length };

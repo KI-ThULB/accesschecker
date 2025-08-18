@@ -160,13 +160,18 @@ function fromTags(tags: string[] | undefined): string[] {
 }
 function enrichViolation(v: Violation, mapping:Record<string,any>, bitvMap:any, enMap:any){
   const m = mapping[v.id] || {};
+  const hasExplicit = Boolean(mapping[v.id]);
   let wcag: string[] = v.wcagRefs || m.wcag || [];
   if (!wcag.length) wcag = fromTags(v.tags);
   let bitv: string[] = v.bitvRefs || m.bitv || [];
-  let en: string[] = v.en301549Refs || m.en || [];
+  let en: string[] = v.en301549Refs || m.en301549 || [];
   if (!bitv.length) bitv = wcag.map(w => bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
   if (!en.length) en = wcag.map(w => enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
-  v.wcagRefs = wcag; v.bitvRefs = bitv; v.en301549Refs = en; if (m.legalContext) v.legalContext = m.legalContext; if (wcag.length||bitv.length||en.length) v.mapped = true;
+  v.wcagRefs = wcag;
+  v.bitvRefs = bitv;
+  v.en301549Refs = en;
+  if (m.legalContext) v.legalContext = m.legalContext;
+  if (!hasExplicit && (wcag.length || bitv.length || en.length)) v.mapped = true;
 }
 
 async function main() {
