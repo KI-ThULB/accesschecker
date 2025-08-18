@@ -10,6 +10,29 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 
+function fromTags(tags: string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const t of tags || []) {
+    const m = t.match(/^wcag(\d)(\d)(\d)$/i);
+    if (m) out.push(`${m[1]}.${m[2]}.${m[3]}`);
+  }
+  return out;
+}
+
+function enrich(v:any, mapping:Record<string,any>, bitvMap:any, enMap:any){
+  const m = mapping[v.id] || {};
+  const hasExplicit = Boolean(mapping[v.id]);
+  let wcag: string[] = v.wcagRefs || m.wcag || [];
+  if (!wcag.length) wcag = fromTags(v.tags);
+  let bitv: string[] = v.bitvRefs || m.bitv || [];
+  let en: string[] = v.en301549Refs || m.en301549 || [];
+  if (!bitv.length) bitv = wcag.map((w:string)=>bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
+  if (!en.length) en = wcag.map((w:string)=>enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
+  v.wcagRefs = wcag; v.bitvRefs = bitv; v.en301549Refs = en;
+  if (m.legalContext) v.legalContext = m.legalContext;
+  if (!hasExplicit && (wcag.length || bitv.length || en.length)) v.mapped = true;
+}
+
 type ScanSummary = {
   startUrl: string;
   date: string;
@@ -232,6 +255,19 @@ async function main() {
   const summary: ScanSummary = JSON.parse(await fs.readFile(path.join(outDir, "scan.json"), "utf-8"));
   const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
   let downloadsReport: any[] = []; try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
+
+  try {
+    const mapArr = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url), 'utf-8'));
+    const bitvMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/bitv.json', import.meta.url), 'utf-8'));
+    const enMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/en.json', import.meta.url), 'utf-8'));
+    const byId: Record<string, any> = {};
+    for (const m of mapArr) byId[m.axeRuleId] = m;
+    for (const v of issues) {
+      if (!v.wcagRefs?.length || !v.bitvRefs?.length || !v.en301549Refs?.length) {
+        enrich(v, byId, bitvMap, enMap);
+      }
+    }
+  } catch {}
 
   // Profil laden
   let profile: Profile = {};
