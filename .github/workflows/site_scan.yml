@@ -35,82 +35,14 @@ on:
         description: 'Hash-Routen (#/...) als eigene Seiten'
         required: false
         default: 'true'
-      check_iframes:
-        description: 'iframes (same-origin) scannen'
-        required: false
-        default: 'true'
       click_consent:
         description: 'Consent-Banner (auto|none|custom)'
         required: false
         default: 'auto'
-      custom_consent_selectors:
-        description: 'Custom-Consent-Selektoren (Komma-getrennt)'
+      extra_config_json:
+        description: 'Zusätzliche Konfiguration als JSON (Keys = Env-Variablen)'
         required: false
-        default: ''
-      dynamic_interactions:
-        description: 'Tabs/Akkordeons automatisch öffnen'
-        required: false
-        default: 'true'
-      wait_strategy:
-        description: 'Wait-Strategie (networkidle|selector|fixed)'
-        required: false
-        default: 'networkidle'
-      wait_selector:
-        description: 'Selector für wait_strategy=selector'
-        required: false
-        default: ''
-      wait_ms:
-        description: 'Millisekunden für wait_strategy=fixed'
-        required: false
-        default: '0'
-      rate_limit_delay_ms_min:
-        description: 'Min. Delay zwischen Aufrufen'
-        required: false
-        default: '200'
-      rate_limit_delay_ms_max:
-        description: 'Max. Delay zwischen Aufrufen'
-        required: false
-        default: '600'
-      navigation_timeout_ms:
-        description: 'Navigation Timeout (ms)'
-        required: false
-        default: '45000'
-      action_timeout_ms:
-        description: 'Aktion Timeout (ms)'
-        required: false
-        default: '45000'
-      user_agent:
-        description: 'User-Agent'
-        required: false
-        default: ''
-      viewport_width:
-        description: 'Viewport Breite'
-        required: false
-        default: '1200'
-      viewport_height:
-        description: 'Viewport Höhe'
-        required: false
-        default: '800'
-      downloads_enabled:
-        description: 'Downloads prüfen'
-        required: false
-        default: 'true'
-      downloads_types:
-        description: 'Download-Typen (Komma-getrennt)'
-        required: false
-        default: 'pdf,docx,pptx,doc,ppt'
-      downloads_max_bytes:
-        description: 'Max. Bytes pro Download'
-        required: false
-        default: '5242880'
-      link_filters_include:
-        description: 'Link-Include-Filter (Regex, Komma)'
-        required: false
-        default: ''
-      link_filters_exclude:
-        description: 'Link-Exclude-Filter (Regex, Komma)'
-        required: false
-        default: ''
+        default: '{}'
 
 jobs:
   scan:
@@ -133,6 +65,35 @@ jobs:
         run: npx playwright install --with-deps
         working-directory: backend
 
+      - name: Set default config
+        run: |
+          cat <<'EOCONF' >> $GITHUB_ENV
+          CHECK_IFRAMES=true
+          CUSTOM_CONSENT_SELECTORS=
+          DYNAMIC_INTERACTIONS=true
+          WAIT_STRATEGY=networkidle
+          WAIT_SELECTOR=
+          WAIT_MS=0
+          RATE_LIMIT_DELAY_MS_MIN=200
+          RATE_LIMIT_DELAY_MS_MAX=600
+          NAVIGATION_TIMEOUT_MS=45000
+          ACTION_TIMEOUT_MS=45000
+          USER_AGENT=
+          VIEWPORT_WIDTH=1200
+          VIEWPORT_HEIGHT=800
+          DOWNLOADS_ENABLED=true
+          DOWNLOADS_TYPES=pdf,docx,pptx,doc,ppt
+          DOWNLOADS_MAX_BYTES=5242880
+          LINK_FILTERS_INCLUDE=
+          LINK_FILTERS_EXCLUDE=
+          EOCONF
+
+      - name: Apply extra config
+        if: ${{ github.event.inputs.extra_config_json != '{}' }}
+        run: |
+          echo "${{ github.event.inputs.extra_config_json }}" | jq -r 'to_entries|.[]|"\(.key)=\(.value)"' >> $GITHUB_ENV
+        shell: bash
+
       - name: Run crawl-scan (tsx)
         env:
           START_URL: ${{ github.event.inputs.start_url }}
@@ -143,25 +104,7 @@ jobs:
           SEED_SITEMAP: ${{ github.event.inputs.seed_sitemap }}
           RESPECT_ROBOTS: ${{ github.event.inputs.respect_robots }}
           RESPECT_HASH_ROUTES: ${{ github.event.inputs.respect_hash_routes }}
-          CHECK_IFRAMES: ${{ github.event.inputs.check_iframes }}
           CLICK_CONSENT: ${{ github.event.inputs.click_consent }}
-          CUSTOM_CONSENT_SELECTORS: ${{ github.event.inputs.custom_consent_selectors }}
-          DYNAMIC_INTERACTIONS: ${{ github.event.inputs.dynamic_interactions }}
-          WAIT_STRATEGY: ${{ github.event.inputs.wait_strategy }}
-          WAIT_SELECTOR: ${{ github.event.inputs.wait_selector }}
-          WAIT_MS: ${{ github.event.inputs.wait_ms }}
-          RATE_LIMIT_DELAY_MS_MIN: ${{ github.event.inputs.rate_limit_delay_ms_min }}
-          RATE_LIMIT_DELAY_MS_MAX: ${{ github.event.inputs.rate_limit_delay_ms_max }}
-          NAVIGATION_TIMEOUT_MS: ${{ github.event.inputs.navigation_timeout_ms }}
-          ACTION_TIMEOUT_MS: ${{ github.event.inputs.action_timeout_ms }}
-          USER_AGENT: ${{ github.event.inputs.user_agent }}
-          VIEWPORT_WIDTH: ${{ github.event.inputs.viewport_width }}
-          VIEWPORT_HEIGHT: ${{ github.event.inputs.viewport_height }}
-          DOWNLOADS_ENABLED: ${{ github.event.inputs.downloads_enabled }}
-          DOWNLOADS_TYPES: ${{ github.event.inputs.downloads_types }}
-          DOWNLOADS_MAX_BYTES: ${{ github.event.inputs.downloads_max_bytes }}
-          LINK_FILTERS_INCLUDE: ${{ github.event.inputs.link_filters_include }}
-          LINK_FILTERS_EXCLUDE: ${{ github.event.inputs.link_filters_exclude }}
         run: npx tsx scripts/crawl-scan.ts
         working-directory: backend
 
