@@ -24,6 +24,7 @@ function extType(u: string): DownloadCheck["type"] {
 }
 
 function limitBuffer(buf: Buffer, maxBytes = 5 * 1024 * 1024) {
+  // HINWEIS: große Downloads werden auf 5 MB begrenzt
   return buf.length > maxBytes ? buf.slice(0, maxBytes) : buf;
 }
 
@@ -36,6 +37,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
     if (t === "doc" || t === "ppt") {
       out.push({
         url, type: t, ok: false,
+        // HINWEIS: Hinweis zur Konvertierung ausgeben
         note: "Altes Binary-Format (DOC/PPT) – automatische BITV/WCAG-Prüfung nicht möglich. Bitte in ein modernes, barrierefrei prüfbares Format (DOCX/PPTX oder PDF/UA) konvertieren.",
         checks: [{ name: "legacy-format", passed: false, details: "Nicht automatisch prüfbar" }],
       });
@@ -43,7 +45,11 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
     }
 
     try {
-      const res = await fetch(url, { redirect: "follow" });
+      // HINWEIS: Download mit 15s Timeout abrufen
+      const controller = new AbortController();
+      const to = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(url, { redirect: "follow", signal: controller.signal });
+      clearTimeout(to);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = Buffer.from(await res.arrayBuffer());
       const buf = limitBuffer(raw);
@@ -96,14 +102,14 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
   try {
     // entpacken
     const zip = await unzipper.Open.buffer(buf);
-    await Promise.all(zip.files.map(async (f) => {
+    await Promise.all(zip.files.map(async (f: any) => {
       const out = path.join(tmpDir, f.path);
       const dir = path.dirname(out);
       fs.mkdirSync(dir, { recursive: true });
       if (f.type === "Directory") return;
       const rs = f.stream();
       const ws = fs.createWriteStream(out);
-      await new Promise((res, rej) => { rs.pipe(ws).on("finish", res).on("error", rej); });
+      await new Promise<void>((res, rej) => { rs.pipe(ws).on("finish", () => res()).on("error", rej); });
     }));
 
     const checks: { name: string; passed: boolean; details?: string }[] = [];

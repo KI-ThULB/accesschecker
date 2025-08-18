@@ -180,6 +180,14 @@ async function gentleInteractions(page: Page) {
         for (const el of hits.slice(0, 6)) { try { (el as HTMLElement).click(); } catch {} }
       });
   } catch {}
+  try {
+    // HINWEIS: einfache Modale/Dialoge öffnen
+    await page.$$eval("dialog:not([open])", (els: any[]) => {
+      for (const el of els.slice(0, 2)) {
+        try { (el as HTMLDialogElement).showModal?.(); } catch {}
+      }
+    });
+  } catch {}
 }
 
 async function main() {
@@ -224,6 +232,26 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ userAgent: defaults.userAgent || "AccessCheckerBot/0.2 (+https://example.invalid)" });
   const page = await context.newPage();
+  // HINWEIS: SPA-Routen via History API und Hash-Änderungen erfassen
+  await page.addInitScript(() => {
+    (window as any).__acsRoutes = [];
+    const record = () => {
+      try { (window as any).__acsRoutes.push(location.href); } catch {}
+    };
+    const push = history.pushState;
+    history.pushState = function (...args: any[]) {
+      // TODO: TypeScript Signaturen ignorieren
+      (push as any).apply(this, args as any);
+      record();
+    };
+    const rep = history.replaceState;
+    history.replaceState = function (...args: any[]) {
+      // TODO: TypeScript Signaturen ignorieren
+      (rep as any).apply(this, args as any);
+      record();
+    };
+    window.addEventListener('hashchange', record, { capture: true });
+  });
 
   while (queue.length && visited.size < MAX_PAGES) {
     const { url, depth } = queue.shift()!;
@@ -233,7 +261,18 @@ async function main() {
 
     try {
       console.log(`🔎 Scanne [d=${depth}]: ${url}`);
-      await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
+      const resp = await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
+
+      // HINWEIS: meta/X-Robots-Tags melden, aber trotzdem prüfen
+      let metaRobots = "";
+      try { metaRobots = (await page.$eval("meta[name='robots']", el => el.getAttribute("content") || "")).toLowerCase(); } catch {}
+      if (metaRobots && /noindex|nofollow/.test(metaRobots)) {
+        console.log(`ℹ️  meta robots ("${metaRobots}") bei ${url} – wird trotzdem geprüft.`);
+      }
+      const xRobots = (resp?.headers()["x-robots-tag"] || "").toLowerCase();
+      if (xRobots && /noindex|nofollow/.test(xRobots)) {
+        console.log(`ℹ️  X-Robots-Tag ("${xRobots}") bei ${url} – wird trotzdem geprüft.`);
+      }
 
       if (consentClick) { await clickConsent(page); }
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -265,11 +304,35 @@ async function main() {
 
       pageResults.push({ url, violations, incomplete });
 
-      // Links sammeln
+      // Links sammeln (inkl. dynamischer Attribute/Onclick)
       const links: string[] = await page.$$eval("a[href]", (els) =>
         (els as HTMLAnchorElement[]).map((a) => (a as any).href as string)
       );
-      for (const raw of links) {
+      let extraLinks: string[] = [];
+      try {
+        extraLinks = await page.evaluate(() => {
+          const out = new Set<string>();
+          const toAbs = (u: string) => {
+            try { return new URL(u, document.baseURI).toString(); } catch { return ""; }
+          };
+          document.querySelectorAll('[data-href],[data-url],[routerlink],[role="link"]').forEach(el => {
+            const href = (el.getAttribute('href') || (el as HTMLElement).dataset.href || (el as HTMLElement).dataset.url || el.getAttribute('routerlink')) || '';
+            const u = toAbs(href);
+            if (u) out.add(u);
+          });
+          document.querySelectorAll('[onclick]').forEach(el => {
+            const attr = el.getAttribute('onclick') || '';
+            const m = attr.match(/(?:location\.href|window\.location(?:\.href)?)\s*=\s*['"]([^'"\s]+)['"]/i);
+            if (m) {
+              const u = toAbs(m[1]);
+              if (u) out.add(u);
+            }
+          });
+          return Array.from(out);
+        });
+      } catch {}
+      const allLinks = links.concat(extraLinks);
+      for (const raw of allLinks) {
         if (!isHttp(raw)) continue;
         const href = normalizeUrl(raw, stripHash);
         if (sameOriginOnly && !sameOrigin(href, origin)) continue;
@@ -278,6 +341,24 @@ async function main() {
           queue.push({ url: href, depth: depth + 1 });
         }
       }
+
+      // HINWEIS: SPA-Routen über History API hinzufügen
+      try {
+        const spaRoutes: string[] = await page.evaluate(() => {
+          const r = (window as any).__acsRoutes || [];
+          (window as any).__acsRoutes = [];
+          return r;
+        });
+        for (const raw of spaRoutes) {
+          if (!isHttp(raw)) continue;
+          const href = normalizeUrl(raw, stripHash);
+          if (sameOriginOnly && !sameOrigin(href, origin)) continue;
+          if (isDownloadLink(href)) { downloads.add(href); continue; }
+          if (depth + 1 <= MAX_DEPTH && !visited.has(href) && !queue.find(q => q.url === href)) {
+            queue.push({ url: href, depth: depth + 1 });
+          }
+        }
+      } catch {}
 
       // iframes als eigene Seiten scannen (nur gleiche Origin)
       if (checkIframes) {

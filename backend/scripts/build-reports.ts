@@ -103,7 +103,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     <p><b>Geltungsbereich:</b> ${escapeHtml(domainFromUrl(summary.startUrl))}<br/>
        <b>Datum:</b> ${escapeHtml(summary.date)}<br/>
        <b>Seiten:</b> ${summary.pagesCrawled} • <b>Downloads:</b> ${summary.downloadsFound}</p>
-    <p><b>Gesamt:</b> ${badge(vereinbarkeitsStatus(summary.totals.violations, summary.score).level)}
+    <p><b>Gesamt:</b> ${badge(vereinbarkeitsStatus(summary.totals.violations, summary.score).level as any)}
       &nbsp;Score: ${summary.score}/100 • Verstöße: ${summary.totals.violations} • Warnungen: ${summary.totals.incomplete}
     </p>
 
@@ -148,7 +148,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     <p><b>Geltungsbereich:</b> ${escapeHtml(domainFromUrl(summary.startUrl))}${profile.websiteOwner?` – ${escapeHtml(profile.websiteOwner)}`:""}</p>
 
     <h2>1. Stand der Vereinbarkeit</h2>
-    <p>Diese Website ist ${badge(status.level)} <b>${escapeHtml(status.label)}</b> mit den Anforderungen der 
+    <p>Diese Website ist ${badge(status.level as any)} <b>${escapeHtml(status.label)}</b> mit den Anforderungen der
        ${escapeHtml(profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0")}.</p>
 
     <h2>2. Nicht barrierefreie Inhalte</h2>
