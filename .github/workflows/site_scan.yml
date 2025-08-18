@@ -112,6 +112,10 @@ jobs:
         run: npx tsx scripts/build-reports.ts
         working-directory: backend
 
+      - name: Audit Norm References
+        run: npm run lint:norms
+        working-directory: backend
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

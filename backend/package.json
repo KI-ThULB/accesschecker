@@ -7,8 +7,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "render-reports": "tsx scripts/build-reports.ts",
-    "lint:norms": "ts-node scripts/audit-norms.ts",
-    "lint:former": "tsx scripts/check_versions.ts"
+    "lint:norms": "tsx scripts/audit-norms.ts",
+    "lint:former": "tsx scripts/check_versions.ts",
+    "test": "node --test --import tsx"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",
