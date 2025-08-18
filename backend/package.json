@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "render-reports": "tsx scripts/build-reports.ts",
-    "lint:norms": "ts-node scripts/audit-norms.ts"
+    "lint:norms": "ts-node scripts/audit-norms.ts",
+    "lint:former": "tsx scripts/check_versions.ts"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",
@@ -27,6 +28,7 @@
     "@types/unzipper": "^0.10.11",
     "ts-node": "^10.9.1",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "dotenv": "^16.4.5"
   }
 }
