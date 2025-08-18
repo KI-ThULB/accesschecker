@@ -1,15 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import fetch from "node-fetch";
-import { PDFDocument } from "pdf-lib";
 import unzipper from "unzipper";
 
 export interface DownloadCheck {
   url: string;
-  type: "pdf" | "doc" | "docx" | "ppt" | "pptx" | "other";
+  type: "pdf" | "doc" | "docx" | "ppt" | "pptx" | "csv" | "txt" | "other";
   ok: boolean;
   checks: { name: string; passed: boolean; details?: string }[];
   note?: string;
+  needsManualReview?: boolean;
+  imagesWithoutAlt?: boolean;
+  hasHeaderRow?: boolean;
 }
 
 function extType(u: string): DownloadCheck["type"] {
@@ -20,6 +22,8 @@ function extType(u: string): DownloadCheck["type"] {
   if (ext === "pptx") return "pptx";
   if (ext === "doc") return "doc";
   if (ext === "ppt") return "ppt";
+  if (ext === "csv") return "csv";
+  if (ext === "txt") return "txt";
   return "other";
 }
 
@@ -55,13 +59,18 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
       const buf = limitBuffer(raw);
 
       if (t === "pdf") {
-        const { ok, checks } = analyzePdf(buf);
-        out.push({ url, type: t, ok, checks });
+        const { ok, checks, needsManualReview, imagesWithoutAlt } = analyzePdf(buf);
+        out.push({ url, type: t, ok, checks, needsManualReview, imagesWithoutAlt });
         continue;
       }
       if (t === "docx" || t === "pptx") {
         const { ok, checks } = await analyzeOOXML(buf, t);
         out.push({ url, type: t, ok, checks });
+        continue;
+      }
+      if (t === "csv" || t === "txt") {
+        const { ok, checks, hasHeaderRow } = analyzeCsvTxt(buf);
+        out.push({ url, type: t, ok, checks, hasHeaderRow });
         continue;
       }
 
@@ -76,7 +85,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
   return out;
 }
 
-function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
+function analyzePdf(buf: Buffer): { ok: boolean; needsManualReview: boolean; imagesWithoutAlt: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
   const head = buf.slice(0, 8).toString("utf-8");
   const txt = buf.toString("latin1"); // robust gegen Binärbytes
   const checks: { name: string; passed: boolean; details?: string }[] = [];
@@ -85,16 +94,34 @@ function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed:
   const hasMarkInfo = /\/MarkInfo\s*<<?\s*\/Marked\s*true/i.test(txt);
   const hasAnyAlt = /\/Alt\s*\(/.test(txt);
   const hasFonts = /\/Font\s*<</.test(txt);
+  const hasOutline = /\/Outlines\s*<</.test(txt);
+  const hasTitle = /\/Title\s*\([^)]*\)/.test(txt);
+  const imageCount = (txt.match(/\/Subtype\s*\/Image/g) || []).length;
+  const altCount = (txt.match(/\/Alt\s*\(/g) || []).length;
+  const imagesWithoutAlt = imageCount > altCount;
 
   checks.push({ name: "pdf-header", passed: hasHeader });
   checks.push({ name: "tagged-structure", passed: hasStruct });
   checks.push({ name: "markinfo-marked", passed: hasMarkInfo });
   checks.push({ name: "alt-texts-present", passed: hasAnyAlt, details: "Heuristik: mindestens ein /Alt gefunden" });
   checks.push({ name: "fonts-embedded", passed: hasFonts });
+  checks.push({ name: "outline-present", passed: hasOutline });
+  checks.push({ name: "document-title", passed: hasTitle });
+  checks.push({ name: "images-have-alt", passed: !imagesWithoutAlt, details: `images:${imageCount} alt:${altCount}` });
 
-  // Minimaldefinition: Struktur & Markierung vorhanden
-  const ok = hasStruct && hasMarkInfo;
-  return { ok, checks };
+  const ok = hasStruct && hasMarkInfo && hasOutline && hasTitle && !imagesWithoutAlt;
+  const needsManualReview = !hasOutline;
+  return { ok, checks, needsManualReview, imagesWithoutAlt };
+}
+
+function analyzeCsvTxt(buf: Buffer): { ok: boolean; hasHeaderRow: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
+  const txt = buf.toString('utf-8');
+  const firstLine = txt.split(/\r?\n/)[0] || '';
+  const sep = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ',';
+  const cells = firstLine.split(sep).map(c => c.trim());
+  const headerOk = cells.length > 1 && cells.every(c => /^[A-Za-z0-9 _-]+$/.test(c));
+  const checks = [{ name: 'header-row', passed: headerOk }];
+  return { ok: headerOk, hasHeaderRow: headerOk, checks };
 }
 
 async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: boolean; checks: { name: string; passed: boolean; details?: string }[] }> {
@@ -145,3 +172,5 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
   }
 }
+
+export { analyzePdf };

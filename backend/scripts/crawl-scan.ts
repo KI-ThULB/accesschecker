@@ -57,6 +57,7 @@ type Violation = {
 
 type PageResult = { url: string; violations: Violation[]; incomplete: any[] };
 type QueueItem = { url: string; depth: number };
+type InteractionLog = { url: string; action: string; selector: string; timestamp: string };
 
 function envBool(name: string, fallback: boolean): boolean {
   const v = (process.env[name] || "").toLowerCase().trim();
@@ -82,7 +83,7 @@ function isHttp(u: string) { return /^https?:\/\//i.test(u); }
 function sameOrigin(a: string, origin: string): boolean {
   try { return new URL(a).origin === origin; } catch { return false; }
 }
-function isDownloadLink(u: string) { return /\.(pdf|docx?|pptx?)($|\?)/i.test(u); }
+function isDownloadLink(u: string) { return /\.(pdf|docx?|pptx?|csv|txt)($|\?)/i.test(u); }
 async function ensureDir(dir: string) { await fs.mkdir(dir, { recursive: true }); }
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function randInt(min: number, max: number) { return Math.floor(min + Math.random() * (max - min + 1)); }
@@ -157,36 +158,64 @@ async function clickConsent(page: Page) {
   } catch {}
 }
 
-async function gentleInteractions(page: Page) {
+async function gentleInteractions(page: Page, log: (a: string, s: string) => void) {
   try {
-    // Details ausklappen
-    await page.$$eval("details:not([open])", (els: Element[]) => els.slice(0, 8).forEach((el: any) => { try { el.open = true; } catch {} }));
+    const details = await page.$$("details:not([open])");
+    for (const el of details.slice(0, 8)) {
+      try {
+        const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await el.evaluate((e: any) => { e.open = true; });
+        log('open-details', sel);
+      } catch {}
+    }
   } catch {}
   try {
-    // ARIA-Trigger klicken
-    await page.$$eval("[aria-haspopup], [role=menuitem], button, summary",
-      (els: Element[]) => { for (const el of els.slice(0, 12)) try { (el as HTMLElement).click(); } catch {} });
+    const triggers = await page.$$("[aria-haspopup], [role=menuitem], button, summary");
+    for (const el of triggers.slice(0, 12)) {
+      try {
+        const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await el.click();
+        log('click', sel);
+      } catch {}
+    }
   } catch {}
   try {
-    // Tabs wechseln
     const tabs = await page.$$("[role='tab']");
-    for (const t of tabs.slice(0, 6)) { try { await t.click(); await page.waitForTimeout(120); } catch {} }
+    for (const t of tabs.slice(0, 6)) {
+      try {
+        const sel = await t.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await t.click();
+        log('tab-switch', sel);
+        await page.waitForTimeout(120);
+      } catch {}
+    }
   } catch {}
   try {
-    // Akkordeons / mehr anzeigen
-    await page.$$eval("[aria-expanded='false'], [data-accordion], a, button",
-      (els: Element[]) => {
-        const hits = (els as HTMLElement[]).filter(el => /mehr anzeigen|weiterlesen|more/i.test(el.innerText || ""));
-        for (const el of hits.slice(0, 6)) { try { (el as HTMLElement).click(); } catch {} }
-      });
+    const hits = await page.$$('[aria-expanded="false"], [data-accordion], a, button');
+    const filtered = [] as any[];
+    for (const el of hits) {
+      try {
+        const text = await el.evaluate((e: any) => (e as HTMLElement).innerText || '');
+        if (/mehr anzeigen|weiterlesen|more/i.test(text)) filtered.push(el);
+      } catch {}
+    }
+    for (const el of filtered.slice(0, 6)) {
+      try {
+        const sel = await el.evaluate((e: any) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await el.click();
+        log('expand', sel);
+      } catch {}
+    }
   } catch {}
   try {
-    // HINWEIS: einfache Modale/Dialoge öffnen
-    await page.$$eval("dialog:not([open])", (els: any[]) => {
-      for (const el of els.slice(0, 2)) {
-        try { (el as HTMLDialogElement).showModal?.(); } catch {}
-      }
-    });
+    const dialogs = await page.$$("dialog:not([open])");
+    for (const el of dialogs.slice(0, 2)) {
+      try {
+        const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await el.evaluate((e: any) => e.showModal?.());
+        log('open-dialog', sel);
+      } catch {}
+    }
   } catch {}
 }
 
@@ -219,6 +248,7 @@ async function main() {
   const queue: QueueItem[] = [{ url: normalizeUrl(START_URL, stripHash), depth: 0 }];
   const downloads = new Set<string>();
   const pageResults: PageResult[] = [];
+  const interactionLogs: InteractionLog[] = [];
 
   // robots + sitemap
   const disallow = respectRobotsTxt ? await readRobots(origin) : [];
@@ -232,124 +262,110 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ userAgent: defaults.userAgent || "AccessCheckerBot/0.2 (+https://example.invalid)" });
   const page = await context.newPage();
-  // HINWEIS: SPA-Routen via History API und Hash-Änderungen erfassen
+  const logInteraction = (action: string, selector: string) => {
+    interactionLogs.push({ url: page.url(), action, selector, timestamp: new Date().toISOString() });
+  };
+  await page.exposeFunction('acsRecordRoute', (href: string) => {
+    interactionLogs.push({ url: href, action: 'route-change', selector: '', timestamp: new Date().toISOString() });
+  });
   await page.addInitScript(() => {
     (window as any).__acsRoutes = [];
     const record = () => {
-      try { (window as any).__acsRoutes.push(location.href); } catch {}
+      try { (window as any).__acsRoutes.push(location.href); (window as any).acsRecordRoute?.(location.href); } catch {}
     };
     const push = history.pushState;
     history.pushState = function (...args: any[]) {
-      // TODO: TypeScript Signaturen ignorieren
       (push as any).apply(this, args as any);
       record();
     };
     const rep = history.replaceState;
     history.replaceState = function (...args: any[]) {
-      // TODO: TypeScript Signaturen ignorieren
       (rep as any).apply(this, args as any);
       record();
     };
     window.addEventListener('hashchange', record, { capture: true });
   });
 
-  while (queue.length && visited.size < MAX_PAGES) {
-    const { url, depth } = queue.shift()!;
-    if (visited.has(url)) continue;
-    if (respectRobotsTxt && disallowed(url, origin, disallow)) continue;
-    visited.add(url);
+  try {
+    while (queue.length && visited.size < MAX_PAGES) {
+      const { url, depth } = queue.shift()!;
+      if (visited.has(url)) continue;
+      if (respectRobotsTxt && disallowed(url, origin, disallow)) continue;
+      visited.add(url);
 
-    try {
-      console.log(`🔎 Scanne [d=${depth}]: ${url}`);
-      const resp = await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
-
-      // HINWEIS: meta/X-Robots-Tags melden, aber trotzdem prüfen
-      let metaRobots = "";
-      try { metaRobots = (await page.$eval("meta[name='robots']", el => el.getAttribute("content") || "")).toLowerCase(); } catch {}
-      if (metaRobots && /noindex|nofollow/.test(metaRobots)) {
-        console.log(`ℹ️  meta robots ("${metaRobots}") bei ${url} – wird trotzdem geprüft.`);
-      }
-      const xRobots = (resp?.headers()["x-robots-tag"] || "").toLowerCase();
-      if (xRobots && /noindex|nofollow/.test(xRobots)) {
-        console.log(`ℹ️  X-Robots-Tag ("${xRobots}") bei ${url} – wird trotzdem geprüft.`);
-      }
-
-      if (consentClick) { await clickConsent(page); }
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-      await page.waitForTimeout(WAIT_AFTER_LOAD);
-      await gentleInteractions(page);
-
-      const axe = new AxeBuilder({ page });
-      const res = await axe.analyze();
-      const violations: Violation[] = (res.violations || []) as any[];
-      const incomplete: any[] = (res.incomplete || []) as any[];
-
-      // Normverweise (optional – falls rules_mapping gepflegt wird)
       try {
-        const mapArr: any[] = JSON.parse(
-          await fs.readFile(new URL("../config/rules_mapping.json", import.meta.url), "utf-8")
-        );
-        const byId: Record<string, any> = {};
-        for (const m of mapArr) byId[m.axeRuleId] = m;
-        for (const v of violations) {
-          const m = byId[v.id];
-          if (m) {
-            v.wcagRefs = m.wcagRefs || [];
-            v.bitvRefs = m.bitvRefs || [];
-            v.en301549Refs = m.en301549Refs || [];
-            v.legalContext = m.legalContext || "";
-          }
+        console.log(`🔎 Scanne [d=${depth}]: ${url}`);
+        const resp = await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
+
+        let metaRobots = "";
+        try { metaRobots = (await page.$eval("meta[name='robots']", el => el.getAttribute("content") || "")).toLowerCase(); } catch {}
+        if (metaRobots && /noindex|nofollow/.test(metaRobots)) {
+          console.log(`ℹ️  meta robots ("${metaRobots}") bei ${url} – wird trotzdem geprüft.`);
         }
-      } catch {}
+        const xRobots = (resp?.headers()["x-robots-tag"] || "").toLowerCase();
+        if (xRobots && /noindex|nofollow/.test(xRobots)) {
+          console.log(`ℹ️  X-Robots-Tag ("${xRobots}") bei ${url} – wird trotzdem geprüft.`);
+        }
 
-      pageResults.push({ url, violations, incomplete });
+        if (consentClick) { await clickConsent(page); }
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        logInteraction('scroll', 'window');
+        await page.waitForTimeout(WAIT_AFTER_LOAD);
+        await gentleInteractions(page, logInteraction);
 
-      // Links sammeln (inkl. dynamischer Attribute/Onclick)
-      const links: string[] = await page.$$eval("a[href]", (els) =>
-        (els as HTMLAnchorElement[]).map((a) => (a as any).href as string)
-      );
-      let extraLinks: string[] = [];
-      try {
-        extraLinks = await page.evaluate(() => {
-          const out = new Set<string>();
-          const toAbs = (u: string) => {
-            try { return new URL(u, document.baseURI).toString(); } catch { return ""; }
-          };
-          document.querySelectorAll('[data-href],[data-url],[routerlink],[role="link"]').forEach(el => {
-            const href = (el.getAttribute('href') || (el as HTMLElement).dataset.href || (el as HTMLElement).dataset.url || el.getAttribute('routerlink')) || '';
-            const u = toAbs(href);
-            if (u) out.add(u);
-          });
-          document.querySelectorAll('[onclick]').forEach(el => {
-            const attr = el.getAttribute('onclick') || '';
-            const m = attr.match(/(?:location\.href|window\.location(?:\.href)?)\s*=\s*['"]([^'"\s]+)['"]/i);
+        const axe = new AxeBuilder({ page });
+        const res = await axe.analyze();
+        const violations: Violation[] = (res.violations || []) as any[];
+        const incomplete: any[] = (res.incomplete || []) as any[];
+
+        try {
+          const mapArr: any[] = JSON.parse(
+            await fs.readFile(new URL("../config/rules_mapping.json", import.meta.url), "utf-8")
+          );
+          const byId: Record<string, any> = {};
+          for (const m of mapArr) byId[m.axeRuleId] = m;
+          for (const v of violations) {
+            const m = byId[v.id];
             if (m) {
-              const u = toAbs(m[1]);
-              if (u) out.add(u);
+              v.wcagRefs = m.wcag || [];
+              v.bitvRefs = m.bitv || [];
+              v.en301549Refs = m.en301549 || [];
+              v.legalContext = m.legalContext || "";
+              if (!v.impact && m.impactDefault) v.impact = m.impactDefault;
             }
-          });
-          return Array.from(out);
-        });
-      } catch {}
-      const allLinks = links.concat(extraLinks);
-      for (const raw of allLinks) {
-        if (!isHttp(raw)) continue;
-        const href = normalizeUrl(raw, stripHash);
-        if (sameOriginOnly && !sameOrigin(href, origin)) continue;
-        if (isDownloadLink(href)) { downloads.add(href); continue; }
-        if (depth + 1 <= MAX_DEPTH && !visited.has(href) && !queue.find(q => q.url === href)) {
-          queue.push({ url: href, depth: depth + 1 });
-        }
-      }
+          }
+        } catch {}
 
-      // HINWEIS: SPA-Routen über History API hinzufügen
-      try {
-        const spaRoutes: string[] = await page.evaluate(() => {
-          const r = (window as any).__acsRoutes || [];
-          (window as any).__acsRoutes = [];
-          return r;
-        });
-        for (const raw of spaRoutes) {
+        pageResults.push({ url, violations, incomplete });
+
+        const links: string[] = await page.$$eval("a[href]", (els) =>
+          (els as HTMLAnchorElement[]).map((a) => (a as any).href as string)
+        );
+        let extraLinks: string[] = [];
+        try {
+          extraLinks = await page.evaluate(() => {
+            const out = new Set<string>();
+            const toAbs = (u: string) => {
+              try { return new URL(u, document.baseURI).toString(); } catch { return ""; }
+            };
+            document.querySelectorAll('[data-href],[data-url],[routerlink],[role="link"]').forEach(el => {
+              const href = (el.getAttribute('href') || (el as HTMLElement).dataset.href || (el as HTMLElement).dataset.url || el.getAttribute('routerlink')) || '';
+              const u = toAbs(href);
+              if (u) out.add(u);
+            });
+            document.querySelectorAll('[onclick]').forEach(el => {
+              const attr = el.getAttribute('onclick') || '';
+              const m = attr.match(/(?:location\.href|window\.location(?:\.href)?)\s*=\s*['"]([^'"\s]+)['"]/i);
+              if (m) {
+                const u = toAbs(m[1]);
+                if (u) out.add(u);
+              }
+            });
+            return Array.from(out);
+          });
+        } catch {}
+        const allLinks = links.concat(extraLinks);
+        for (const raw of allLinks) {
           if (!isHttp(raw)) continue;
           const href = normalizeUrl(raw, stripHash);
           if (sameOriginOnly && !sameOrigin(href, origin)) continue;
@@ -358,60 +374,76 @@ async function main() {
             queue.push({ url: href, depth: depth + 1 });
           }
         }
-      } catch {}
 
-      // iframes als eigene Seiten scannen (nur gleiche Origin)
-      if (checkIframes) {
-        for (const f of page.frames()) {
-          const fu = f.url();
-          if (!isHttp(fu)) continue;
-          const fUrl = normalizeUrl(fu, stripHash);
-          if (sameOriginOnly && !sameOrigin(fUrl, origin)) continue;
-          if (!visited.has(fUrl) && !queue.find(q => q.url === fUrl)) {
-            queue.push({ url: fUrl, depth: depth + 1 });
+        try {
+          const spaRoutes: string[] = await page.evaluate(() => {
+            const r = (window as any).__acsRoutes || [];
+            (window as any).__acsRoutes = [];
+            return r;
+          });
+          for (const raw of spaRoutes) {
+            if (!isHttp(raw)) continue;
+            const href = normalizeUrl(raw, stripHash);
+            if (sameOriginOnly && !sameOrigin(href, origin)) continue;
+            if (isDownloadLink(href)) { downloads.add(href); continue; }
+            if (depth + 1 <= MAX_DEPTH && !visited.has(href) && !queue.find(q => q.url === href)) {
+              queue.push({ url: href, depth: depth + 1 });
+            }
+          }
+        } catch {}
+
+        if (checkIframes) {
+          for (const f of page.frames()) {
+            const fu = f.url();
+            if (!isHttp(fu)) continue;
+            const fUrl = normalizeUrl(fu, stripHash);
+            if (sameOriginOnly && !sameOrigin(fUrl, origin)) continue;
+            if (!visited.has(fUrl) && !queue.find(q => q.url === fUrl)) {
+              queue.push({ url: fUrl, depth: depth + 1 });
+            }
           }
         }
+      } catch (e) {
+        console.warn(`⚠️  Scan-Fehler bei ${url}:`, (e as any)?.message || e);
       }
-    } catch (e) {
-      console.warn(`⚠️  Scan-Fehler bei ${url}:`, (e as any)?.message || e);
+
+      await sleep(randInt(WAIT_MIN, WAIT_MAX));
     }
 
-    // kleine zufällige Wartezeit (Rate-Limiting)
-    await sleep(randInt(WAIT_MIN, WAIT_MAX));
+    let downloadsReport: any[] = [];
+    if (downloads.size) {
+      try {
+        downloadsReport = await checkDownloads(Array.from(downloads).slice(0, 50));
+      } catch (e) {
+        console.warn("⚠️  Downloads konnten nicht geprüft werden:", (e as any)?.message || e);
+      }
+    }
+
+    const allViolations = pageResults.flatMap(p => p.violations);
+    const score = computeScore(allViolations);
+
+    const summary = {
+      startUrl: START_URL,
+      date: new Date().toISOString(),
+      pagesCrawled: visited.size,
+      downloadsFound: downloads.size,
+      score,
+      totals: {
+        violations: allViolations.length,
+        incomplete: pageResults.reduce((a, p) => a + p.incomplete.length, 0)
+      }
+    };
+
+    await fs.writeFile(path.join(OUTPUT_DIR, "scan.json"), JSON.stringify(summary, null, 2), "utf-8");
+    await fs.writeFile(path.join(OUTPUT_DIR, "pages.json"), JSON.stringify(Array.from(visited), null, 2), "utf-8");
+    await fs.writeFile(path.join(OUTPUT_DIR, "issues.json"), JSON.stringify(allViolations, null, 2), "utf-8");
+    await fs.writeFile(path.join(OUTPUT_DIR, "downloads.json"), JSON.stringify(Array.from(downloads), null, 2), "utf-8");
+    await fs.writeFile(path.join(OUTPUT_DIR, "downloads_report.json"), JSON.stringify(downloadsReport, null, 2), "utf-8");
   }
-
-  await browser.close();
-
-  // Downloads prüfen
-  let downloadsReport: any[] = [];
-  if (downloads.size) {
-    try {
-      downloadsReport = await checkDownloads(Array.from(downloads).slice(0, 50));
-    } catch (e) {
-      console.warn("⚠️  Downloads konnten nicht geprüft werden:", (e as any)?.message || e);
-    }
+  finally {
+    try { await browser.close(); } catch {}
+    try { await fs.writeFile(path.join(OUTPUT_DIR, "dynamic_interactions.json"), JSON.stringify(interactionLogs, null, 2), "utf-8"); } catch {}
   }
-
-  const allViolations = pageResults.flatMap(p => p.violations);
-  const score = computeScore(allViolations);
-
-  const summary = {
-    startUrl: START_URL,
-    date: new Date().toISOString(),
-    pagesCrawled: visited.size,
-    downloadsFound: downloads.size,
-    score,
-    totals: {
-      violations: allViolations.length,
-      incomplete: pageResults.reduce((a, p) => a + p.incomplete.length, 0)
-    }
-  };
-
-  await fs.writeFile(path.join(OUTPUT_DIR, "scan.json"), JSON.stringify(summary, null, 2), "utf-8");
-  await fs.writeFile(path.join(OUTPUT_DIR, "pages.json"), JSON.stringify(Array.from(visited), null, 2), "utf-8");
-  await fs.writeFile(path.join(OUTPUT_DIR, "issues.json"), JSON.stringify(allViolations, null, 2), "utf-8");
-  await fs.writeFile(path.join(OUTPUT_DIR, "downloads.json"), JSON.stringify(Array.from(downloads), null, 2), "utf-8");
-  await fs.writeFile(path.join(OUTPUT_DIR, "downloads_report.json"), JSON.stringify(downloadsReport, null, 2), "utf-8");
 
   console.log("✅ Scan abgeschlossen. Artefakte in:", OUTPUT_DIR);
 }

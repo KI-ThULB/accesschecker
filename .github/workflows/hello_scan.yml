@@ -29,4 +29,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: accesschecker-reports
-          path: backend/out/*
+          path: |
+            backend/out/*
+            backend/out/dynamic_interactions.json
