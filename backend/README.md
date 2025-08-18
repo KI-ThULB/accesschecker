@@ -25,6 +25,17 @@ npm run hello-scan -- --url=https://www.w3.org/WAI/demos/bad/ --out=out
 
 Ergebnis: HTML + PDF im Ordner `out/`.
 
+## Parametrisierung & Beispiele
+
+```bash
+# Kompletten Crawl ausführen
+npm run crawl -- --url=https://www.w3.org/WAI/demos/bad/ --max-pages=10 --max-depth=2
+# Reports generieren
+npm run build:reports
+# Normreferenzen auditieren
+npm run lint:norms
+```
+
 ## Ordnerstruktur
 - `src/` – Platzhalter für API/Worker (später)
 - `scripts/hello-scan.ts` – Einmal-Scanner (Playwright + axe-core)

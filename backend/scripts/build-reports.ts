@@ -103,6 +103,10 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     </tr>`;
   }).join("");
 
+  const legacy = (downloadsReport||[]).filter((d:any)=>d.legacyFormat);
+  const legacyList = legacy.map((d:any)=>`<li><a href="${escapeHtml(d.url)}">${escapeHtml(d.url)}</a> (${d.type.toUpperCase()})</li>`).join("");
+  const legacyBox = `<div><h3>Legacy-Dokumente (${legacy.length})</h3>${legacy.length?`<ul>${legacyList}</ul><p>Empfehlung: In aktuelle Formate (PDF/UA, DOCX/PPTX) überführen.</p>`:'<p><small>Keine Legacy-Formate gefunden.</small></p>'}</div>`;
+
   return `<!doctype html><html lang="de"><head>
     <meta charset="utf-8"/>
     <title>Interner Barrierefreiheitsbericht</title>
@@ -122,7 +126,8 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${rows || '<tr><td colspan="4"><small>Keine Verstöße ermittelt.</small></td></tr>'}</tbody>
     </table>
 
-    <h2>Prüfung von Downloads</h2>
+    <h2>Downloads-Befunde</h2>
+    ${legacyBox}
     <table>
       <thead><tr><th>Datei</th><th>Typ</th><th>Status</th><th>Checks</th></tr></thead>
       <tbody>${dlRows || '<tr><td colspan="4"><small>Keine prüfbaren Downloads.</small></td></tr>'}</tbody>
