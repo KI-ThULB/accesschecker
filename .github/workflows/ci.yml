@@ -28,5 +28,8 @@ jobs:
       - name: Type check
         run: npm run typecheck --if-present
 
+      - name: Norms audit
+        run: npm run lint:norms --if-present
+
       - name: Build
         run: npm run build --if-present

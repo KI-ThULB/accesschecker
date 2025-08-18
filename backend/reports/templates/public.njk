@@ -28,7 +28,7 @@
 <h2>Wesentliche Verstöße</h2>
 <ul>
 {% for issue in issues | slice(0, 10) %}
-  <li>{{ issue.description }} (WCAG: {{ issue.wcagRefs | join(', ') }})</li>
+  <li>{{ issue.description or issue.help }} (WCAG: {% if issue.wcagRefs and issue.wcagRefs.length %}{{ issue.wcagRefs | join(', ') }}{% else %}—{% endif %})</li>
 {% endfor %}
 </ul>
 {% if issues.length > 10 %}

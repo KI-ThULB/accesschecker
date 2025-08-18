@@ -6,7 +6,8 @@
     "crawl-scan": "tsx scripts/crawl-scan.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "render-reports": "tsx scripts/build-reports.ts"
+    "render-reports": "tsx scripts/build-reports.ts",
+    "lint:norms": "ts-node scripts/audit-norms.ts"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",
@@ -24,6 +25,7 @@
     "@types/node": "^20.14.10",
     "@types/nunjucks": "^3.2.6",
     "@types/unzipper": "^0.10.11",
+    "ts-node": "^10.9.1",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4"
   }

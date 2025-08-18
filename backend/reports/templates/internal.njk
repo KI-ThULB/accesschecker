@@ -37,12 +37,12 @@
     {% for issue in issues %}
     <tr>
       <td>{{ issue.url }}</td>
-      <td>{{ issue.id }}</td>
-      <td>{{ issue.description }}</td>
-      <td>{{ issue.wcagRefs | join(', ') }}</td>
-      <td>{{ issue.bitvRefs | join(', ') }}</td>
-      <td>{{ issue.en301549Refs | join(', ') }}</td>
-      <td>{{ issue.legalContext }}</td>
+      <td>{{ issue.id }}{% if issue.mapped %} (mapped){% endif %}</td>
+      <td>{{ issue.description or issue.help }}</td>
+      <td>{% if issue.wcagRefs and issue.wcagRefs.length %}{{ issue.wcagRefs | join(', ') }}{% else %}—{% endif %}</td>
+      <td>{% if issue.bitvRefs and issue.bitvRefs.length %}{{ issue.bitvRefs | join(', ') }}{% else %}—{% endif %}</td>
+      <td>{% if issue.en301549Refs and issue.en301549Refs.length %}{{ issue.en301549Refs | join(', ') }}{% else %}—{% endif %}</td>
+      <td>{{ issue.legalContext or '' }}</td>
     </tr>
     {% endfor %}
   </tbody>

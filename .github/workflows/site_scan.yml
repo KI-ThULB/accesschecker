@@ -10,41 +10,112 @@ on:
       max_pages:
         description: 'Max. Seiten'
         required: false
-        default: '50'
+        default: '200'
       max_depth:
         description: 'Max. Tiefe'
         required: false
-        default: '3'
-      respect_robots:
-        description: 'robots.txt respektieren (true/false)'
+        default: '10'
+      scope:
+        description: 'Crawl-Scope (same-origin|same-site|domain-list)'
         required: false
-        default: 'true'
+        default: 'same-origin'
+      domain_allowlist:
+        description: 'Allowlist-Domains (Komma-getrennt)'
+        required: false
+        default: ''
       seed_sitemap:
-        description: 'sitemap.xml als Seed nutzen (true/false)'
+        description: 'sitemap.xml als Seed nutzen'
         required: false
         default: 'true'
+      respect_robots:
+        description: 'robots.txt Modus (respect|audit|ignore)'
+        required: false
+        default: 'respect'
       respect_hash_routes:
-        description: 'Hash-Routen (#/...) als eigene Seiten behandeln'
+        description: 'Hash-Routen (#/...) als eigene Seiten'
         required: false
         default: 'true'
       check_iframes:
-        description: 'iframes (same-origin) zusätzlich scannen'
+        description: 'iframes (same-origin) scannen'
         required: false
         default: 'true'
-      consent_click:
-        description: 'Consent-Buttons (Cookie-Banner) klicken'
+      click_consent:
+        description: 'Consent-Banner (auto|none|custom)'
+        required: false
+        default: 'auto'
+      custom_consent_selectors:
+        description: 'Custom-Consent-Selektoren (Komma-getrennt)'
+        required: false
+        default: ''
+      dynamic_interactions:
+        description: 'Tabs/Akkordeons automatisch öffnen'
         required: false
         default: 'true'
-      check_downloads:
-        description: 'Downloads (PDF/DOCX/PPTX) prüfen'
+      wait_strategy:
+        description: 'Wait-Strategie (networkidle|selector|fixed)'
+        required: false
+        default: 'networkidle'
+      wait_selector:
+        description: 'Selector für wait_strategy=selector'
+        required: false
+        default: ''
+      wait_ms:
+        description: 'Millisekunden für wait_strategy=fixed'
+        required: false
+        default: '0'
+      rate_limit_delay_ms_min:
+        description: 'Min. Delay zwischen Aufrufen'
+        required: false
+        default: '200'
+      rate_limit_delay_ms_max:
+        description: 'Max. Delay zwischen Aufrufen'
+        required: false
+        default: '600'
+      navigation_timeout_ms:
+        description: 'Navigation Timeout (ms)'
+        required: false
+        default: '45000'
+      action_timeout_ms:
+        description: 'Aktion Timeout (ms)'
+        required: false
+        default: '45000'
+      user_agent:
+        description: 'User-Agent'
+        required: false
+        default: ''
+      viewport_width:
+        description: 'Viewport Breite'
+        required: false
+        default: '1200'
+      viewport_height:
+        description: 'Viewport Höhe'
+        required: false
+        default: '800'
+      downloads_enabled:
+        description: 'Downloads prüfen'
         required: false
         default: 'true'
+      downloads_types:
+        description: 'Download-Typen (Komma-getrennt)'
+        required: false
+        default: 'pdf,docx,pptx,doc,ppt'
+      downloads_max_bytes:
+        description: 'Max. Bytes pro Download'
+        required: false
+        default: '5242880'
+      link_filters_include:
+        description: 'Link-Include-Filter (Regex, Komma)'
+        required: false
+        default: ''
+      link_filters_exclude:
+        description: 'Link-Exclude-Filter (Regex, Komma)'
+        required: false
+        default: ''
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 75
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,12 +138,30 @@ jobs:
           START_URL: ${{ github.event.inputs.start_url }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
           MAX_DEPTH: ${{ github.event.inputs.max_depth }}
-          RESPECT_ROBOTS: ${{ github.event.inputs.respect_robots }}
+          SCOPE: ${{ github.event.inputs.scope }}
+          DOMAIN_ALLOWLIST: ${{ github.event.inputs.domain_allowlist }}
           SEED_SITEMAP: ${{ github.event.inputs.seed_sitemap }}
+          RESPECT_ROBOTS: ${{ github.event.inputs.respect_robots }}
           RESPECT_HASH_ROUTES: ${{ github.event.inputs.respect_hash_routes }}
           CHECK_IFRAMES: ${{ github.event.inputs.check_iframes }}
-          CONSENT_CLICK: ${{ github.event.inputs.consent_click }}
-          CHECK_DOWNLOADS: ${{ github.event.inputs.check_downloads }}
+          CLICK_CONSENT: ${{ github.event.inputs.click_consent }}
+          CUSTOM_CONSENT_SELECTORS: ${{ github.event.inputs.custom_consent_selectors }}
+          DYNAMIC_INTERACTIONS: ${{ github.event.inputs.dynamic_interactions }}
+          WAIT_STRATEGY: ${{ github.event.inputs.wait_strategy }}
+          WAIT_SELECTOR: ${{ github.event.inputs.wait_selector }}
+          WAIT_MS: ${{ github.event.inputs.wait_ms }}
+          RATE_LIMIT_DELAY_MS_MIN: ${{ github.event.inputs.rate_limit_delay_ms_min }}
+          RATE_LIMIT_DELAY_MS_MAX: ${{ github.event.inputs.rate_limit_delay_ms_max }}
+          NAVIGATION_TIMEOUT_MS: ${{ github.event.inputs.navigation_timeout_ms }}
+          ACTION_TIMEOUT_MS: ${{ github.event.inputs.action_timeout_ms }}
+          USER_AGENT: ${{ github.event.inputs.user_agent }}
+          VIEWPORT_WIDTH: ${{ github.event.inputs.viewport_width }}
+          VIEWPORT_HEIGHT: ${{ github.event.inputs.viewport_height }}
+          DOWNLOADS_ENABLED: ${{ github.event.inputs.downloads_enabled }}
+          DOWNLOADS_TYPES: ${{ github.event.inputs.downloads_types }}
+          DOWNLOADS_MAX_BYTES: ${{ github.event.inputs.downloads_max_bytes }}
+          LINK_FILTERS_INCLUDE: ${{ github.event.inputs.link_filters_include }}
+          LINK_FILTERS_EXCLUDE: ${{ github.event.inputs.link_filters_exclude }}
         run: npx tsx scripts/crawl-scan.ts
         working-directory: backend
 

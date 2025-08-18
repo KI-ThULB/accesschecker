@@ -1,37 +1,9 @@
 [
   {
-    "axeRuleId": "region",
-    "wcagRefs": ["1.3.1"],
-    "bitvRefs": ["9.1.3.1a"],
-    "en301549Refs": ["9.1.3.1"],
-    "legalContext": "Seitenbereiche müssen für Assistive Technologien erkennbar strukturiert sein."
-  },
-  {
-    "axeRuleId": "landmark-one-main",
-    "wcagRefs": ["1.3.1"],
-    "bitvRefs": ["9.1.3.1b"],
-    "en301549Refs": ["9.1.3.1"],
-    "legalContext": "Es darf nur ein <main>-Bereich pro Seite geben."
-  },
-  {
     "axeRuleId": "link-name",
-    "wcagRefs": ["2.4.4", "4.1.2"],
-    "bitvRefs": ["9.2.4.4", "9.4.1.2"],
-    "en301549Refs": ["9.2.4.4", "9.4.1.2"],
-    "legalContext": "Links müssen einen aussagekräftigen, erkennbaren Namen besitzen."
-  },
-  {
-    "axeRuleId": "html-has-lang",
-    "wcagRefs": ["3.1.1"],
-    "bitvRefs": ["9.3.1.1"],
-    "en301549Refs": ["9.3.1.1"],
-    "legalContext": "Die Hauptsprache der Seite muss im <html>-Element angegeben sein."
-  },
-  {
-    "axeRuleId": "image-alt",
-    "wcagRefs": ["1.1.1"],
-    "bitvRefs": ["9.1.1.1a"],
-    "en301549Refs": ["9.1.1.1"],
-    "legalContext": "Bilder müssen aussagekräftige Alternativtexte haben."
+    "wcag": ["2.4.4", "4.1.2"],
+    "bitv": ["9.2.4.4", "9.4.1.2"],
+    "en": ["9.2.4.4", "9.4.1.2"],
+    "legalContext": "WCAG 2.1 A/AA; BITV 2.0; EN 301 549"
   }
 ]
