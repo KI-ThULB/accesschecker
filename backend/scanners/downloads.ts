@@ -12,6 +12,11 @@ export interface DownloadCheck {
   note?: string;
 }
 
+interface Options {
+  types: string[];
+  maxBytes: number;
+}
+
 function extType(u: string): DownloadCheck["type"] {
   const m = u.toLowerCase().match(/\.([a-z0-9]+)(?:$|\?)/);
   const ext = m ? m[1] : "";
@@ -23,45 +28,44 @@ function extType(u: string): DownloadCheck["type"] {
   return "other";
 }
 
-function limitBuffer(buf: Buffer, maxBytes = 5 * 1024 * 1024) {
-  // HINWEIS: große Downloads werden auf 5 MB begrenzt
-  return buf.length > maxBytes ? buf.slice(0, maxBytes) : buf;
+function limitBuffer(buf: Buffer, maxBytes: number) {
+  const truncated = buf.length > maxBytes;
+  return { buf: truncated ? buf.slice(0, maxBytes) : buf, truncated };
 }
 
-export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
+export async function checkDownloads(urls: string[], opts: Options): Promise<DownloadCheck[]> {
   const out: DownloadCheck[] = [];
   for (const url of urls) {
     const t = extType(url);
+    if (!opts.types.includes(t)) continue;
 
     // Legacy-Binärformate: nicht automatisch prüfbar (DOC/PPT)
     if (t === "doc" || t === "ppt") {
       out.push({
         url, type: t, ok: false,
-        // HINWEIS: Hinweis zur Konvertierung ausgeben
-        note: "Altes Binary-Format (DOC/PPT) – automatische BITV/WCAG-Prüfung nicht möglich. Bitte in ein modernes, barrierefrei prüfbares Format (DOCX/PPTX oder PDF/UA) konvertieren.",
+        note: "Altes Binary-Format (DOC/PPT) – automatische BITV/WCAG-Prüfung nicht möglich. Bitte konvertieren.",
         checks: [{ name: "legacy-format", passed: false, details: "Nicht automatisch prüfbar" }],
       });
       continue;
     }
 
     try {
-      // HINWEIS: Download mit 15s Timeout abrufen
       const controller = new AbortController();
       const to = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(url, { redirect: "follow", signal: controller.signal });
       clearTimeout(to);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = Buffer.from(await res.arrayBuffer());
-      const buf = limitBuffer(raw);
+      const { buf, truncated } = limitBuffer(raw, opts.maxBytes);
 
       if (t === "pdf") {
         const { ok, checks } = analyzePdf(buf);
-        out.push({ url, type: t, ok, checks });
+        out.push({ url, type: t, ok, checks, note: truncated ? `truncated at ${opts.maxBytes} bytes` : undefined });
         continue;
       }
       if (t === "docx" || t === "pptx") {
         const { ok, checks } = await analyzeOOXML(buf, t);
-        out.push({ url, type: t, ok, checks });
+        out.push({ url, type: t, ok, checks, note: truncated ? `truncated at ${opts.maxBytes} bytes` : undefined });
         continue;
       }
 
@@ -78,7 +82,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
 
 function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
   const head = buf.slice(0, 8).toString("utf-8");
-  const txt = buf.toString("latin1"); // robust gegen Binärbytes
+  const txt = buf.toString("latin1");
   const checks: { name: string; passed: boolean; details?: string }[] = [];
   const hasHeader = head.startsWith("%PDF-");
   const hasStruct = /\/StructTreeRoot/.test(txt);
@@ -92,7 +96,6 @@ function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed:
   checks.push({ name: "alt-texts-present", passed: hasAnyAlt, details: "Heuristik: mindestens ein /Alt gefunden" });
   checks.push({ name: "fonts-embedded", passed: hasFonts });
 
-  // Minimaldefinition: Struktur & Markierung vorhanden
   const ok = hasStruct && hasMarkInfo;
   return { ok, checks };
 }
@@ -100,7 +103,6 @@ function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed:
 async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: boolean; checks: { name: string; passed: boolean; details?: string }[] }> {
   const tmpDir = fs.mkdtempSync(path.join(process.cwd(), "oox-"));
   try {
-    // entpacken
     const zip = await unzipper.Open.buffer(buf);
     await Promise.all(zip.files.map(async (f: any) => {
       const out = path.join(tmpDir, f.path);
@@ -141,7 +143,6 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
       return { ok, checks };
     }
   } finally {
-    // cleanup best-effort
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
   }
 }

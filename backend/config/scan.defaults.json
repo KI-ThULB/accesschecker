@@ -1,15 +1,33 @@
 {
-  "sameOriginOnly": true,
-  "respectRobotsTxt": true,
+  "startUrl": "https://www.w3.org/WAI/demos/bad/",
+  "maxPages": 200,
+  "maxDepth": 10,
+  "scope": "same-origin",
+  "domainAllowlist": [],
   "seedSitemap": true,
+  "respectRobots": "respect",
   "respectHashRoutes": true,
   "checkIframes": true,
-  "consentClick": true,
-  "maxPages": 50,
-  "maxDepth": 3,
-  "timeoutMs": 45000,
-  "waitAfterLoadMs": 600,
-  "waitMinMs": 200,
-  "waitMaxMs": 600,
-  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)"
+  "clickConsent": "auto",
+  "customConsentSelectors": [],
+  "dynamicInteractions": true,
+  "waitStrategy": "networkidle",
+  "waitSelector": "",
+  "waitMs": 0,
+  "rateLimitDelayMsMin": 200,
+  "rateLimitDelayMsMax": 600,
+  "navigationTimeoutMs": 45000,
+  "actionTimeoutMs": 45000,
+  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)",
+  "viewportWidth": 1200,
+  "viewportHeight": 800,
+  "downloads": {
+    "enabled": true,
+    "types": ["pdf", "docx", "pptx", "doc", "ppt"],
+    "maxBytes": 5242880
+  },
+  "linkFilters": {
+    "include": [],
+    "exclude": []
+  }
 }

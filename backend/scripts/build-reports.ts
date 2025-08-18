@@ -75,9 +75,13 @@ function deriveTopFindings(issues: any[], limit = 8) {
 function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[]) {
   const rows = issues.slice(0, 300).map((v: any) => {
     const targets = (v.nodes || []).slice(0, 3).map((n: any) => `<code>${escapeHtml((n.target?.[0]||"").toString())}</code>`).join("<br/>");
-    const wcag = (v.wcagRefs || []).join(", "); const bitv = (v.bitvRefs || []).join(", "); const en = (v.en301549Refs || []).join(", ");
+    const wcag = v.wcagRefs && v.wcagRefs.length ? v.wcagRefs.join(", ") : "—";
+    const bitv = v.bitvRefs && v.bitvRefs.length ? v.bitvRefs.join(", ") : "—";
+    const en = v.en301549Refs && v.en301549Refs.length ? v.en301549Refs.join(", ") : "—";
+    const ruleId = escapeHtml(v.id||"");
+    const label = v.mapped ? `${ruleId} <small>(mapped)</small>` : ruleId;
     return `<tr>
-      <td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.help||"")}</small></td>
+      <td><b>${label}</b><br/><small>${escapeHtml(v.help||"")}</small></td>
       <td>${escapeHtml(v.impact||"n/a")}</td>
       <td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}<br/>EN: ${escapeHtml(en)}</small></td>
       <td>${targets}</td>
@@ -129,7 +133,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   const today = new Date().toISOString().slice(0,10);
 
   const topList = top.length
-    ? top.map((v) => `<li>${escapeHtml(v.help)} (WCAG: ${escapeHtml((v.wcag||[]).join(", "))})</li>`).join("")
+    ? top.map((v) => `<li>${escapeHtml(v.help)} (WCAG: ${escapeHtml((v.wcag && v.wcag.length ? v.wcag.join(', ') : '—'))})</li>`).join("")
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
 
   const manual = (profile.manualFindings || []).map((m) =>
