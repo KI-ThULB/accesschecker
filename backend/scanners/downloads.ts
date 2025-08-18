@@ -10,6 +10,8 @@ export interface DownloadCheck {
   ok: boolean;
   checks: { name: string; passed: boolean; details?: string }[];
   note?: string;
+  legacyFormat?: boolean;
+  needsManualReview?: boolean;
 }
 
 interface Options {
@@ -43,7 +45,9 @@ export async function checkDownloads(urls: string[], opts: Options): Promise<Dow
     if (t === "doc" || t === "ppt") {
       out.push({
         url, type: t, ok: false,
-        note: "Altes Binary-Format (DOC/PPT) – automatische BITV/WCAG-Prüfung nicht möglich. Bitte konvertieren.",
+        legacyFormat: true,
+        needsManualReview: true,
+        note: "Altes Binary-Format – automatische BITV/WCAG-Prüfung nicht möglich. Bitte in DOCX/PPTX oder PDF/UA konvertieren.",
         checks: [{ name: "legacy-format", passed: false, details: "Nicht automatisch prüfbar" }],
       });
       continue;

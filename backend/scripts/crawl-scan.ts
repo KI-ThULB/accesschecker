@@ -49,6 +49,7 @@ interface Violation {
   id: string;
   impact?: string;
   help?: string;
+  helpUrl?: string;
   nodes?: { target: string[]; failureSummary?: string }[];
   tags?: string[];
   wcagRefs?: string[];
@@ -56,6 +57,7 @@ interface Violation {
   en301549Refs?: string[];
   legalContext?: string;
   mapped?: boolean;
+  norms?: { wcagRefs: string[]; bitvRefs: string[]; en301549Refs: string[]; legalContext?: string };
 }
 
 interface PageResult { url: string; violations: Violation[]; incomplete: any[]; simulated?: boolean; robotsBlocked?: boolean; }
@@ -155,23 +157,24 @@ async function gentleInteractions(page: Page) {
   try { await page.$$eval('dialog:not([open])', (els:any[])=>{ for(const el of els.slice(0,2)) try{ (el as HTMLDialogElement).showModal?.(); }catch{} }); } catch{}
 }
 
-function fromTags(tags: string[] | undefined): string[] {
-  const out:string[]=[]; for(const t of tags||[]){const m=t.match(/^wcag(\d)(\d)(\d)$/i); if(m) out.push(`${m[1]}.${m[2]}.${m[3]}`);} return out;
-}
-function enrichViolation(v: Violation, mapping:Record<string,any>, bitvMap:any, enMap:any){
-  const m = mapping[v.id] || {};
-  const hasExplicit = Boolean(mapping[v.id]);
-  let wcag: string[] = v.wcagRefs || m.wcag || [];
-  if (!wcag.length) wcag = fromTags(v.tags);
-  let bitv: string[] = v.bitvRefs || m.bitv || [];
-  let en: string[] = v.en301549Refs || m.en301549 || [];
-  if (!bitv.length) bitv = wcag.map(w => bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
-  if (!en.length) en = wcag.map(w => enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
-  v.wcagRefs = wcag;
-  v.bitvRefs = bitv;
-  v.en301549Refs = en;
-  if (m.legalContext) v.legalContext = m.legalContext;
-  if (!hasExplicit && (wcag.length || bitv.length || en.length)) v.mapped = true;
+
+function attachNorms(v: Violation, mapping: Record<string, any>) {
+  const entry = mapping[v.id] || {};
+  const hasExplicit = Boolean(entry.wcagRefs?.length || entry.wcag?.length || entry.bitvRefs?.length || entry.bitv?.length || entry.en301549Refs?.length || entry.en301549?.length);
+  v.wcagRefs = entry.wcagRefs || entry.wcag || v.wcagRefs || [];
+  v.bitvRefs = entry.bitvRefs || entry.bitv || v.bitvRefs || [];
+  v.en301549Refs = entry.en301549Refs || entry.en301549 || v.en301549Refs || [];
+  if (entry.legalContext) v.legalContext = entry.legalContext;
+  if (!v.wcagRefs.length || !v.bitvRefs.length || !v.en301549Refs.length) {
+    enrichWithFallback(v);
+    if (!hasExplicit && (v.wcagRefs.length || v.bitvRefs.length || v.en301549Refs.length)) v.mapped = true;
+  }
+  v.norms = {
+    wcagRefs: v.wcagRefs,
+    bitvRefs: v.bitvRefs,
+    en301549Refs: v.en301549Refs,
+    ...(v.legalContext ? { legalContext: v.legalContext } : {})
+  };
 }
 
 async function main() {
@@ -251,10 +254,18 @@ async function main() {
     window.addEventListener('hashchange', record, { capture: true });
   });
 
-  let ruleMap: Record<string, any> = {}; let bitvMap:any={}; let enMap:any={};
-  try { const arr = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url),'utf-8')); for(const m of arr) ruleMap[m.axeRuleId]=m; } catch {}
-  try { bitvMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/bitv.json', import.meta.url),'utf-8')); } catch {}
-  try { enMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/en.json', import.meta.url),'utf-8')); } catch {}
+  let ruleMap: Record<string, any> = {};
+  try {
+    const arr = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url), 'utf-8'));
+    for (const m of arr) {
+      ruleMap[m.axeRuleId] = {
+        wcagRefs: m.wcagRefs || m.wcag || [],
+        bitvRefs: m.bitvRefs || m.bitv || [],
+        en301549Refs: m.en301549Refs || m.en301549 || [],
+        legalContext: m.legalContext
+      };
+    }
+  } catch {}
 
   while (queue.length && visited.size < MAX_PAGES) {
     const { url, depth } = queue.shift()!;
@@ -283,7 +294,7 @@ async function main() {
       const res = await axe.analyze();
       const violations: Violation[] = (res.violations || []) as any[];
       const incomplete: any[] = (res.incomplete || []) as any[];
-      for (const v of violations) enrichViolation(v, ruleMap, bitvMap, enMap);
+      for (const v of violations) attachNorms(v, ruleMap);
 
       pageResults.push({ url, violations, incomplete, simulated: simulate, robotsBlocked: isBlocked });
 

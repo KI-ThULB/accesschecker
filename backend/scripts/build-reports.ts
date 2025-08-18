@@ -9,29 +9,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-
-function fromTags(tags: string[] | undefined): string[] {
-  const out: string[] = [];
-  for (const t of tags || []) {
-    const m = t.match(/^wcag(\d)(\d)(\d)$/i);
-    if (m) out.push(`${m[1]}.${m[2]}.${m[3]}`);
-  }
-  return out;
-}
-
-function enrich(v:any, mapping:Record<string,any>, bitvMap:any, enMap:any){
-  const m = mapping[v.id] || {};
-  const hasExplicit = Boolean(mapping[v.id]);
-  let wcag: string[] = v.wcagRefs || m.wcag || [];
-  if (!wcag.length) wcag = fromTags(v.tags);
-  let bitv: string[] = v.bitvRefs || m.bitv || [];
-  let en: string[] = v.en301549Refs || m.en301549 || [];
-  if (!bitv.length) bitv = wcag.map((w:string)=>bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
-  if (!en.length) en = wcag.map((w:string)=>enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
-  v.wcagRefs = wcag; v.bitvRefs = bitv; v.en301549Refs = en;
-  if (m.legalContext) v.legalContext = m.legalContext;
-  if (!hasExplicit && (wcag.length || bitv.length || en.length)) v.mapped = true;
-}
+import { enrichWithFallback } from "./lib/norms.js";
 
 type ScanSummary = {
   startUrl: string;
@@ -84,12 +62,14 @@ function vereinbarkeitsStatus(violations: number, score: number) {
   return { label: "nicht vereinbar", level: "red", code: "non" };
 }
 function deriveTopFindings(issues: any[], limit = 8) {
-  const map = new Map<string, { help: string; wcag: string[]; count: number }>();
+  const map = new Map<string, { help: string; wcagRefs: string[]; bitvRefs: string[]; en301549Refs: string[]; count: number }>();
   for (const v of issues) {
     const key = v.id || v.help || "unbekannt";
-    const entry = map.get(key) || { help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
+    const entry = map.get(key) || { help: v.help || v.id || "unbekannt", wcagRefs: [], bitvRefs: [], en301549Refs: [], count: 0 };
     entry.count += 1;
-    if (Array.isArray(v.wcagRefs) && v.wcagRefs.length) entry.wcag = v.wcagRefs;
+    if (v.norms?.wcagRefs?.length) entry.wcagRefs = v.norms.wcagRefs;
+    if (v.norms?.bitvRefs?.length) entry.bitvRefs = v.norms.bitvRefs;
+    if (v.norms?.en301549Refs?.length) entry.en301549Refs = v.norms.en301549Refs;
     map.set(key, entry);
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
@@ -103,21 +83,23 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     const en = v.en301549Refs && v.en301549Refs.length ? v.en301549Refs.join(", ") : "—";
     const ruleId = escapeHtml(v.id||"");
     const label = v.mapped ? `${ruleId} <small>(mapped)</small>` : ruleId;
+    const normText = `WCAG: ${escapeHtml(wcag)} | BITV: ${escapeHtml(bitv)} | EN: ${escapeHtml(en)}${v.inferredNorms ? ' •' : ''}`;
     return `<tr>
       <td><b>${label}</b><br/><small>${escapeHtml(v.help||"")}</small></td>
       <td>${escapeHtml(v.impact||"n/a")}</td>
-      <td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}<br/>EN: ${escapeHtml(en)}</small></td>
+      <td><small>${normText}</small></td>
       <td>${targets}</td>
     </tr>`;
   }).join("");
 
   const dlRows = (downloadsReport||[]).map((d: any) => {
     const checks = (d.checks||[]).map((c:any)=>`<li>${escapeHtml(c.name)}: ${c.passed?"✔︎":"✘"}${c.details?` – ${escapeHtml(c.details)}`:""}</li>`).join("");
+    const extra = d.needsManualReview ? `<br/><small>Manuelle Prüfung erforderlich</small>` : "";
     return `<tr>
       <td><a href="${escapeHtml(d.url)}">${escapeHtml(d.url)}</a></td>
       <td>${escapeHtml(String(d.type).toUpperCase())}</td>
       <td>${d.ok?"OK":"<b>Nicht bestanden</b>"}</td>
-      <td><ul>${checks}</ul>${d.note?`<small>${escapeHtml(d.note)}</small>`:""}</td>
+      <td><ul>${checks}</ul>${d.note?`<small>${escapeHtml(d.note)}</small>`:""}${extra}</td>
     </tr>`;
   }).join("");
 
@@ -156,7 +138,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   const today = new Date().toISOString().slice(0,10);
 
   const topList = top.length
-    ? top.map((v) => `<li>${escapeHtml(v.help)} (WCAG: ${escapeHtml((v.wcag && v.wcag.length ? v.wcag.join(', ') : '—'))})</li>`).join("")
+    ? top.map((v) => `<li>${escapeHtml(v.help)} (WCAG: ${escapeHtml(v.wcagRefs.join(', '))})</li>`).join("")
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
 
   const manual = (profile.manualFindings || []).map((m) =>
@@ -233,7 +215,13 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "conformanceStatus": status.code, // full | partial | non
       "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
       "method": profile.legal?.method || "automatisierte Selbstbewertung",
-      "topFindings": top.map(t => ({ text: t.help, wcag: t.wcag }))
+      "topFindings": top.map(t => {
+        const item: any = { text: t.help };
+        if (t.wcagRefs.length) item.wcag = t.wcagRefs;
+        if (t.bitvRefs.length) item.bitv = t.bitvRefs;
+        if (t.en301549Refs.length) item.en301549 = t.en301549Refs;
+        return item;
+      })
     },
     "provider": {
       "name": profile.organisationName || profile.websiteOwner || ""
@@ -256,18 +244,20 @@ async function main() {
   const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
   let downloadsReport: any[] = []; try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
 
-  try {
-    const mapArr = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url), 'utf-8'));
-    const bitvMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/bitv.json', import.meta.url), 'utf-8'));
-    const enMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/en.json', import.meta.url), 'utf-8'));
-    const byId: Record<string, any> = {};
-    for (const m of mapArr) byId[m.axeRuleId] = m;
-    for (const v of issues) {
-      if (!v.wcagRefs?.length || !v.bitvRefs?.length || !v.en301549Refs?.length) {
-        enrich(v, byId, bitvMap, enMap);
-      }
+  for (const v of issues) {
+    if (!Array.isArray(v.wcagRefs) || !v.wcagRefs.length ||
+        !Array.isArray(v.bitvRefs) || !v.bitvRefs.length ||
+        !Array.isArray(v.en301549Refs) || !v.en301549Refs.length) {
+      enrichWithFallback(v);
+      v.inferredNorms = true;
     }
-  } catch {}
+    v.norms = {
+      wcagRefs: v.wcagRefs,
+      bitvRefs: v.bitvRefs,
+      en301549Refs: v.en301549Refs,
+      ...(v.legalContext ? { legalContext: v.legalContext } : {})
+    };
+  }
 
   // Profil laden
   let profile: Profile = {};

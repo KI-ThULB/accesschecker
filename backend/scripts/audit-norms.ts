@@ -1,57 +1,46 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-interface MappingEntry { axeRuleId: string; wcag?: string[]; bitv?: string[]; en301549?: string[]; }
-
-function fromTags(tags: string[] | undefined): string[] {
-  const out: string[] = [];
-  for (const t of tags || []) {
-    const m = t.match(/^wcag(\d)(\d)(\d)$/i);
-    if (m) out.push(`${m[1]}.${m[2]}.${m[3]}`);
-  }
-  return out;
+export interface NormAudit {
+  total: number;
+  missing: number;
+  missingByRule: Record<string, number>;
 }
 
-function mapNorms(rule: any, mapping: Record<string, MappingEntry>, bitvMap: any, enMap: any) {
-  const entry = mapping[rule.id] || {};
-  let wcag: string[] = rule.wcagRefs || entry.wcag || [];
-  if (!wcag.length) wcag = fromTags(rule.tags);
-  let bitv: string[] = rule.bitvRefs || entry.bitv || [];
-  let en: string[] = rule.en301549Refs || entry.en301549 || [];
-  if (!bitv.length) bitv = wcag.map((w: string) => bitvMap[w] || (bitvMap._prefix ? bitvMap._prefix + w : undefined)).filter(Boolean);
-  if (!en.length) en = wcag.map((w: string) => enMap[w] || (enMap._prefix ? enMap._prefix + w : undefined)).filter(Boolean);
-  return { wcag, bitv, en, ok: wcag.length && bitv.length && en.length };
+export function auditIssues(issues: any[]): NormAudit {
+  const summary: NormAudit = { total: issues.length, missing: 0, missingByRule: {} };
+  for (const v of issues) {
+    const hasW = Array.isArray(v.wcagRefs) && v.wcagRefs.length > 0;
+    const hasB = Array.isArray(v.bitvRefs) && v.bitvRefs.length > 0;
+    const hasE = Array.isArray(v.en301549Refs) && v.en301549Refs.length > 0;
+    if (!(hasW && hasB && hasE)) {
+      summary.missing++;
+      summary.missingByRule[v.id || 'unknown'] = (summary.missingByRule[v.id || 'unknown'] || 0) + 1;
+    }
+  }
+  return summary;
 }
 
 async function main() {
-  const outDir = path.join(process.cwd(), 'out');
+  const outDir = process.env.OUT_DIR || process.env.OUTPUT_DIR || path.join(process.cwd(), 'out');
+  const issuesPath = path.join(outDir, 'issues.json');
   let issues: any[] = [];
   try {
-    issues = JSON.parse(await fs.readFile(path.join(outDir, 'issues.json'), 'utf-8'));
+    issues = JSON.parse(await fs.readFile(issuesPath, 'utf-8'));
   } catch {
-    console.warn('⚠️  Keine issues.json gefunden – Normen-Audit übersprungen.');
-    return;
+    console.error('❌ issues.json nicht gefunden.');
+    process.exit(1);
   }
-  const mapArr: MappingEntry[] = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url), 'utf-8'));
-  const bitvMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/bitv.json', import.meta.url), 'utf-8'));
-  const enMap = JSON.parse(await fs.readFile(new URL('../config/norm_maps/en.json', import.meta.url), 'utf-8'));
-  const byId: Record<string, MappingEntry> = {};
-  for (const m of mapArr) byId[m.axeRuleId] = m;
-  const seen = new Set<string>();
-  const warnings: any[] = [];
-  for (const v of issues) {
-    if (seen.has(v.id)) continue; seen.add(v.id);
-    const norm = mapNorms(v, byId, bitvMap, enMap);
-    if (!norm.ok) {
-      warnings.push({ rule: v.id, wcag: norm.wcag, bitv: norm.bitv, en: norm.en });
-    }
-  }
-  await fs.writeFile(path.join(outDir, 'norm_audit.json'), JSON.stringify(warnings, null, 2), 'utf-8');
-  if (warnings.length) {
-    console.error('❌ Fehlende Normverweise:', warnings.length);
+  const summary = auditIssues(issues);
+  await fs.writeFile(path.join(outDir, 'norm_audit.json'), JSON.stringify(summary, null, 2), 'utf-8');
+  if (summary.missing > 0) {
+    console.error(`❌ Normverweise fehlen bei ${summary.missing} Issue(s).`);
     process.exit(1);
   }
   console.log('✅ Normverweise vollständig.');
 }
 
-main().catch((e)=>{ console.error(e); process.exit(1); });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
