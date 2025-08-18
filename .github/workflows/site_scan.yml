@@ -3,7 +3,7 @@ name: Site Scan
 on:
   workflow_dispatch:
     inputs:
-      start_url:
+      url:
         description: 'Start-URL'
         required: true
         default: 'https://www.w3.org/WAI/demos/bad/'
@@ -94,22 +94,12 @@ jobs:
           echo "${{ github.event.inputs.extra_config_json }}" | jq -r 'to_entries|.[]|"\(.key)=\(.value)"' >> $GITHUB_ENV
         shell: bash
 
-      - name: Run crawl-scan (tsx)
-        env:
-          START_URL: ${{ github.event.inputs.start_url }}
-          MAX_PAGES: ${{ github.event.inputs.max_pages }}
-          MAX_DEPTH: ${{ github.event.inputs.max_depth }}
-          SCOPE: ${{ github.event.inputs.scope }}
-          DOMAIN_ALLOWLIST: ${{ github.event.inputs.domain_allowlist }}
-          SEED_SITEMAP: ${{ github.event.inputs.seed_sitemap }}
-          RESPECT_ROBOTS: ${{ github.event.inputs.respect_robots }}
-          RESPECT_HASH_ROUTES: ${{ github.event.inputs.respect_hash_routes }}
-          CLICK_CONSENT: ${{ github.event.inputs.click_consent }}
-        run: npx tsx scripts/crawl-scan.ts
+      - name: Run crawl
+        run: npm run crawl -- --url ${{ github.event.inputs.url }} --max-pages ${{ github.event.inputs.max_pages }} --max-depth ${{ github.event.inputs.max_depth }} --scope ${{ github.event.inputs.scope }} --domain-allowlist "${{ github.event.inputs.domain_allowlist }}" --seed-sitemap ${{ github.event.inputs.seed_sitemap }} --respect-robots ${{ github.event.inputs.respect_robots }} --respect-hash-routes ${{ github.event.inputs.respect_hash_routes }} --click-consent ${{ github.event.inputs.click_consent }}
         working-directory: backend
 
-      - name: Render PDF reports
-        run: npx tsx scripts/build-reports.ts
+      - name: Build reports
+        run: npm run build:reports
         working-directory: backend
 
       - name: Audit Norm References

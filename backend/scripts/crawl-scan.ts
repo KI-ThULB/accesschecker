@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import { chromium, Page } from 'playwright';
 import { AxeBuilder } from '@axe-core/playwright';
 import { checkDownloads } from '../scanners/downloads.js';
+import { enrichWithFallback } from './lib/norms.js';
 
 async function readDefaults() {
   try {
@@ -101,9 +102,44 @@ async function ensureDir(dir: string) { await fs.mkdir(dir, { recursive: true })
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function randInt(min: number, max: number) { return Math.floor(min + Math.random()*(max-min+1)); }
 
+function applyCliArgs() {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!a.startsWith('--')) continue;
+    const key = a.replace(/^--/, '').replace(/-/g, '_').toUpperCase();
+    const val = args[i + 1] && !args[i + 1].startsWith('--') ? args[++i] : 'true';
+    if (key === 'URL') process.env.START_URL = val;
+    else process.env[key] = val;
+  }
+}
+
+async function fetchWithRetry(url: string, opts: any = {}, retries = 2): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try { return await fetch(url, opts); }
+    catch (e) { if (attempt === retries) throw e; }
+    await sleep((2 ** attempt) * 300 + randInt(0, 200));
+  }
+  throw new Error('unreachable');
+}
+
+async function navigateWithRetry(page: Page, url: string, wait: string, retries = 2) {
+  for (let attempt = 0; ; attempt++) {
+    try { return await page.goto(url, { waitUntil: wait === 'networkidle' ? 'networkidle' : 'load' }); }
+    catch (e) {
+      if (attempt >= retries) throw e;
+      await sleep((2 ** attempt) * 500 + randInt(0, 250));
+    }
+  }
+}
+
+async function settle(page: Page) {
+  await Promise.allSettled([page.waitForLoadState('networkidle'), sleep(250)]);
+}
+
 async function readRobots(origin: string): Promise<string[]> {
   try {
-    const res = await fetch(`${origin}/robots.txt`, { redirect: 'follow' });
+    const res = await fetchWithRetry(`${origin}/robots.txt`, { redirect: 'follow' });
     if (!res.ok) return [];
     const txt = await res.text();
     const lines = txt.split(/\r?\n/); const dis:string[]=[]; let applies=false;
@@ -121,7 +157,7 @@ function disallowed(urlStr: string, origin: string, rules: string[]): boolean {
 }
 async function readSitemap(origin: string): Promise<string[]> {
   try {
-    const res = await fetch(`${origin}/sitemap.xml`, { redirect: 'follow' });
+    const res = await fetchWithRetry(`${origin}/sitemap.xml`, { redirect: 'follow' });
     if (!res.ok) return [];
     const xml = await res.text();
     const locs = Array.from(xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)).map(m=>m[1]);
@@ -279,7 +315,7 @@ async function main() {
 
     try {
       console.log(`🔎 Scanne [d=${depth}]${simulate?' (simulation)':''}: ${url}`);
-      const resp = await page.goto(url, { waitUntil: waitStrategy==='networkidle'?'networkidle':'load' });
+      const resp = await navigateWithRetry(page, url, waitStrategy);
       if (waitStrategy === 'selector' && waitSelector) { try { await page.waitForSelector(waitSelector); } catch {} }
       if (waitStrategy === 'fixed' && waitMs>0) { await page.waitForTimeout(waitMs); }
 
@@ -289,13 +325,32 @@ async function main() {
       }
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       if (dynamicInteractions) await gentleInteractions(page);
+      await settle(page);
 
       const axe = new AxeBuilder({ page });
       const res = await axe.analyze();
       const violations: Violation[] = (res.violations || []) as any[];
       const incomplete: any[] = (res.incomplete || []) as any[];
-      for (const v of violations) attachNorms(v, ruleMap);
 
+      if (checkIframes) {
+        for (const f of page.frames()) {
+          const fu = f.url();
+          if (!isHttp(fu) || fu === url) continue;
+          if (new URL(fu).origin === origin) {
+            try {
+              const fr = await new AxeBuilder({ page: f }).analyze();
+              violations.push(...(fr.violations || []) as any[]);
+              incomplete.push(...(fr.incomplete || []) as any[]);
+            } catch {}
+          } else {
+            const fUrl = normalizeUrl(fu, stripHash);
+            if (!inScope(fUrl)) { filteredByScope++; continue; }
+            if (depth + 1 <= MAX_DEPTH && !visited.has(fUrl) && !queue.find(q=>q.url===fUrl)) queue.push({ url: fUrl, depth: depth + 1 });
+          }
+        }
+      }
+
+      for (const v of violations) attachNorms(v, ruleMap);
       pageResults.push({ url, violations, incomplete, simulated: simulate, robotsBlocked: isBlocked });
 
       if (!simulate) {
@@ -329,6 +384,7 @@ async function main() {
         if (checkIframes) {
           for (const f of page.frames()) {
             const fu = f.url(); if (!isHttp(fu)) continue;
+            if (new URL(fu).origin === origin) continue;
             const fUrl = normalizeUrl(fu, stripHash);
             if (!inScope(fUrl)) { filteredByScope++; continue; }
             if (depth + 1 <= MAX_DEPTH && !visited.has(fUrl) && !queue.find(q=>q.url===fUrl)) queue.push({ url: fUrl, depth: depth + 1 });
@@ -414,4 +470,5 @@ async function main() {
   console.log('✅ Scan abgeschlossen. Artefakte in:', OUTPUT_DIR);
 }
 
+applyCliArgs();
 main().catch(err => { console.error('❌ Unerwarteter Fehler:', err); process.exit(1); });

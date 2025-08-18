@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import fetch from "node-fetch";
-import { PDFDocument } from "pdf-lib";
 import unzipper from "unzipper";
 
 export interface DownloadCheck {
@@ -85,22 +84,17 @@ export async function checkDownloads(urls: string[], opts: Options): Promise<Dow
 }
 
 function analyzePdf(buf: Buffer): { ok: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
-  const head = buf.slice(0, 8).toString("utf-8");
-  const txt = buf.toString("latin1");
+  const txt = buf.toString('latin1');
   const checks: { name: string; passed: boolean; details?: string }[] = [];
-  const hasHeader = head.startsWith("%PDF-");
-  const hasStruct = /\/StructTreeRoot/.test(txt);
-  const hasMarkInfo = /\/MarkInfo\s*<<?\s*\/Marked\s*true/i.test(txt);
-  const hasAnyAlt = /\/Alt\s*\(/.test(txt);
-  const hasFonts = /\/Font\s*<</.test(txt);
+  const hasText = /\([^)]{3,}\)\s*TJ?/.test(txt);
+  const hasTitle = /\/Title\s*\([^)]{1,}\)/.test(txt) || /<dc:title>[^<]+<\/dc:title>/i.test(txt);
+  const hasOutline = /\/Outlines\s+\d+\s+0\s+R/.test(txt);
 
-  checks.push({ name: "pdf-header", passed: hasHeader });
-  checks.push({ name: "tagged-structure", passed: hasStruct });
-  checks.push({ name: "markinfo-marked", passed: hasMarkInfo });
-  checks.push({ name: "alt-texts-present", passed: hasAnyAlt, details: "Heuristik: mindestens ein /Alt gefunden" });
-  checks.push({ name: "fonts-embedded", passed: hasFonts });
+  checks.push({ name: 'text-content', passed: hasText });
+  checks.push({ name: 'title-metadata', passed: hasTitle });
+  checks.push({ name: 'outline-present', passed: hasOutline });
 
-  const ok = hasStruct && hasMarkInfo;
+  const ok = hasText && hasTitle;
   return { ok, checks };
 }
 
