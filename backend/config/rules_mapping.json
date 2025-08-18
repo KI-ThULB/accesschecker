@@ -1,37 +1,1475 @@
 [
   {
-    "axeRuleId": "region",
-    "wcagRefs": ["1.3.1"],
-    "bitvRefs": ["9.1.3.1a"],
-    "en301549Refs": ["9.1.3.1"],
-    "legalContext": "Seitenbereiche müssen für Assistive Technologien erkennbar strukturiert sein."
+    "axeRuleId": "accesskeys",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
   },
   {
-    "axeRuleId": "landmark-one-main",
-    "wcagRefs": ["1.3.1"],
-    "bitvRefs": ["9.1.3.1b"],
-    "en301549Refs": ["9.1.3.1"],
-    "legalContext": "Es darf nur ein <main>-Bereich pro Seite geben."
+    "axeRuleId": "area-alt",
+    "wcag": [
+      "2.4.4",
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.2.4.4",
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.2.4.4",
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
   },
   {
-    "axeRuleId": "link-name",
-    "wcagRefs": ["2.4.4", "4.1.2"],
-    "bitvRefs": ["9.2.4.4", "9.4.1.2"],
-    "en301549Refs": ["9.2.4.4", "9.4.1.2"],
-    "legalContext": "Links müssen einen aussagekräftigen, erkennbaren Namen besitzen."
+    "axeRuleId": "aria-allowed-attr",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-allowed-role",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "aria-braille-equivalent",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-command-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-conditional-attr",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-deprecated-role",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "aria-dialog-name",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-hidden-body",
+    "wcag": [
+      "1.3.1",
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.1.3.1",
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.1.3.1",
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-hidden-focus",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-input-field-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-meter-name",
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-progressbar-name",
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-prohibited-attr",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-required-attr",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-required-children",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-required-parent",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-roledescription",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-roles",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-text",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-toggle-field-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-tooltip-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-treeitem-name",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "aria-valid-attr-value",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "aria-valid-attr",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "audio-caption",
+    "wcag": [
+      "1.2.1"
+    ],
+    "bitv": [
+      "9.1.2.1"
+    ],
+    "en301549": [
+      "9.1.2.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "autocomplete-valid",
+    "wcag": [
+      "1.3.5"
+    ],
+    "bitv": [
+      "9.1.3.5"
+    ],
+    "en301549": [
+      "9.1.3.5"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "avoid-inline-spacing",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "9.1.4.12"
+    ],
+    "en301549": [
+      "9.1.4.12"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "blink",
+    "wcag": [
+      "2.2.2"
+    ],
+    "bitv": [
+      "9.2.2.2"
+    ],
+    "en301549": [
+      "9.2.2.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "button-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "bypass",
+    "wcag": [
+      "2.4.1"
+    ],
+    "bitv": [
+      "9.2.4.1"
+    ],
+    "en301549": [
+      "9.2.4.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "color-contrast-enhanced",
+    "wcag": [
+      "1.4.6"
+    ],
+    "bitv": [
+      "9.1.4.6"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "color-contrast",
+    "wcag": [
+      "1.4.3"
+    ],
+    "bitv": [
+      "9.1.4.3"
+    ],
+    "en301549": [
+      "9.1.4.3"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "css-orientation-lock",
+    "wcag": [
+      "1.3.4"
+    ],
+    "bitv": [
+      "9.1.3.4"
+    ],
+    "en301549": [
+      "9.1.3.4"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "definition-list",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "dlitem",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "document-title",
+    "wcag": [
+      "2.4.2"
+    ],
+    "bitv": [
+      "9.2.4.2"
+    ],
+    "en301549": [
+      "9.2.4.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "duplicate-id-active",
+    "wcag": [
+      "4.1.1"
+    ],
+    "bitv": [
+      "9.4.1.1"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "duplicate-id-aria",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "duplicate-id",
+    "wcag": [
+      "4.1.1"
+    ],
+    "bitv": [
+      "9.4.1.1"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "empty-heading",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "empty-table-header",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "focus-order-semantics",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "form-field-multiple-labels",
+    "wcag": [
+      "3.3.2"
+    ],
+    "bitv": [
+      "9.3.3.2"
+    ],
+    "en301549": [
+      "9.3.3.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "frame-focusable-content",
+    "wcag": [
+      "2.1.1"
+    ],
+    "bitv": [
+      "9.2.1.1"
+    ],
+    "en301549": [
+      "9.2.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "frame-tested",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "frame-title-unique",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "frame-title",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "heading-order",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "hidden-content",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
   },
   {
     "axeRuleId": "html-has-lang",
-    "wcagRefs": ["3.1.1"],
-    "bitvRefs": ["9.3.1.1"],
-    "en301549Refs": ["9.3.1.1"],
-    "legalContext": "Die Hauptsprache der Seite muss im <html>-Element angegeben sein."
+    "wcag": [
+      "3.1.1"
+    ],
+    "bitv": [
+      "9.3.1.1"
+    ],
+    "en301549": [
+      "9.3.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "html-lang-valid",
+    "wcag": [
+      "3.1.1"
+    ],
+    "bitv": [
+      "9.3.1.1"
+    ],
+    "en301549": [
+      "9.3.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "html-xml-lang-mismatch",
+    "wcag": [
+      "3.1.1"
+    ],
+    "bitv": [
+      "9.3.1.1"
+    ],
+    "en301549": [
+      "9.3.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "identical-links-same-purpose",
+    "wcag": [
+      "2.4.9"
+    ],
+    "bitv": [
+      "9.2.4.9"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
   },
   {
     "axeRuleId": "image-alt",
-    "wcagRefs": ["1.1.1"],
-    "bitvRefs": ["9.1.1.1a"],
-    "en301549Refs": ["9.1.1.1"],
-    "legalContext": "Bilder müssen aussagekräftige Alternativtexte haben."
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "image-redundant-alt",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "input-button-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "input-image-alt",
+    "wcag": [
+      "1.1.1",
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.1.1.1",
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.1.1.1",
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "label-content-name-mismatch",
+    "wcag": [
+      "2.5.3"
+    ],
+    "bitv": [
+      "9.2.5.3"
+    ],
+    "en301549": [
+      "9.2.5.3"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "label-title-only",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "label",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "landmark-banner-is-top-level",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-complementary-is-top-level",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-contentinfo-is-top-level",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-main-is-top-level",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-no-duplicate-banner",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-no-duplicate-contentinfo",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-no-duplicate-main",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-one-main",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "landmark-unique",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "link-in-text-block",
+    "wcag": [
+      "1.4.1"
+    ],
+    "bitv": [
+      "9.1.4.1"
+    ],
+    "en301549": [
+      "9.1.4.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "link-name",
+    "wcag": [
+      "2.4.4",
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.2.4.4",
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.2.4.4",
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "list",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "listitem",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "marquee",
+    "wcag": [
+      "2.2.2"
+    ],
+    "bitv": [
+      "9.2.2.2"
+    ],
+    "en301549": [
+      "9.2.2.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "meta-refresh-no-exceptions",
+    "wcag": [
+      "2.2.4",
+      "3.2.5"
+    ],
+    "bitv": [
+      "9.2.2.4",
+      "9.3.2.5"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "meta-refresh",
+    "wcag": [
+      "2.2.1"
+    ],
+    "bitv": [
+      "9.2.2.1"
+    ],
+    "en301549": [
+      "9.2.2.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "meta-viewport-large",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "meta-viewport",
+    "wcag": [
+      "1.4.4"
+    ],
+    "bitv": [
+      "9.1.4.4"
+    ],
+    "en301549": [
+      "9.1.4.4"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "nested-interactive",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "no-autoplay-audio",
+    "wcag": [
+      "1.4.2"
+    ],
+    "bitv": [
+      "9.1.4.2"
+    ],
+    "en301549": [
+      "9.1.4.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "object-alt",
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "p-as-heading",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "page-has-heading-one",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "presentation-role-conflict",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "region",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "role-img-alt",
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "scope-attr-valid",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "scrollable-region-focusable",
+    "wcag": [
+      "2.1.1",
+      "2.1.3"
+    ],
+    "bitv": [
+      "9.2.1.1",
+      "9.2.1.3"
+    ],
+    "en301549": [
+      "9.2.1.1",
+      "9.2.1.3"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "select-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "server-side-image-map",
+    "wcag": [
+      "2.1.1"
+    ],
+    "bitv": [
+      "9.2.1.1"
+    ],
+    "en301549": [
+      "9.2.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "skip-link",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "moderate"
+  },
+  {
+    "axeRuleId": "summary-name",
+    "wcag": [
+      "4.1.2"
+    ],
+    "bitv": [
+      "9.4.1.2"
+    ],
+    "en301549": [
+      "9.4.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "svg-img-alt",
+    "wcag": [
+      "1.1.1"
+    ],
+    "bitv": [
+      "9.1.1.1"
+    ],
+    "en301549": [
+      "9.1.1.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "tabindex",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "table-duplicate-name",
+    "wcag": [
+      "TODO"
+    ],
+    "bitv": [
+      "TODO"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "minor"
+  },
+  {
+    "axeRuleId": "table-fake-caption",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "target-size",
+    "wcag": [
+      "2.5.8"
+    ],
+    "bitv": [
+      "9.2.5.8"
+    ],
+    "en301549": [
+      "TODO"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "td-has-header",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
+  },
+  {
+    "axeRuleId": "td-headers-attr",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "th-has-data-cells",
+    "wcag": [
+      "1.3.1"
+    ],
+    "bitv": [
+      "9.1.3.1"
+    ],
+    "en301549": [
+      "9.1.3.1"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "valid-lang",
+    "wcag": [
+      "3.1.2"
+    ],
+    "bitv": [
+      "9.3.1.2"
+    ],
+    "en301549": [
+      "9.3.1.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "serious"
+  },
+  {
+    "axeRuleId": "video-caption",
+    "wcag": [
+      "1.2.2"
+    ],
+    "bitv": [
+      "9.1.2.2"
+    ],
+    "en301549": [
+      "9.1.2.2"
+    ],
+    "legalContext": "BITV 2.0, EN 301 549; WCAG 2.1 AA",
+    "impactDefault": "critical"
   }
 ]

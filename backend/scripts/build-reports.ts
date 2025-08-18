@@ -61,10 +61,10 @@ function vereinbarkeitsStatus(violations: number, score: number) {
   return { label: "nicht vereinbar", level: "red", code: "non" };
 }
 function deriveTopFindings(issues: any[], limit = 8) {
-  const map = new Map<string, { help: string; wcag: string[]; count: number }>();
+  const map = new Map<string, { id: string; help: string; wcag: string[]; count: number }>();
   for (const v of issues) {
     const key = v.id || v.help || "unbekannt";
-    const entry = map.get(key) || { help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
+    const entry = map.get(key) || { id: v.id || key, help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
     entry.count += 1;
     if (Array.isArray(v.wcagRefs) && v.wcagRefs.length) entry.wcag = v.wcagRefs;
     map.set(key, entry);
@@ -72,7 +72,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[]) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[]) {
   const rows = issues.slice(0, 300).map((v: any) => {
     const targets = (v.nodes || []).slice(0, 3).map((n: any) => `<code>${escapeHtml((n.target?.[0]||"").toString())}</code>`).join("<br/>");
     const wcag = (v.wcagRefs || []).join(", "); const bitv = (v.bitvRefs || []).join(", "); const en = (v.en301549Refs || []).join(", ");
@@ -83,6 +83,10 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <td>${targets}</td>
     </tr>`;
   }).join("");
+
+  const typeCounts: Record<string, number> = {};
+  for (const d of downloadsReport || []) typeCounts[d.type] = (typeCounts[d.type] || 0) + 1;
+  const typeSummary = Object.entries(typeCounts).map(([t,c])=>`${t.toUpperCase()}: ${c}`).join(', ');
 
   const dlRows = (downloadsReport||[]).map((d: any) => {
     const checks = (d.checks||[]).map((c:any)=>`<li>${escapeHtml(c.name)}: ${c.passed?"✔︎":"✘"}${c.details?` – ${escapeHtml(c.details)}`:""}</li>`).join("");
@@ -102,7 +106,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     <h1>Interner Barrierefreiheitsbericht</h1>
     <p><b>Geltungsbereich:</b> ${escapeHtml(domainFromUrl(summary.startUrl))}<br/>
        <b>Datum:</b> ${escapeHtml(summary.date)}<br/>
-       <b>Seiten:</b> ${summary.pagesCrawled} • <b>Downloads:</b> ${summary.downloadsFound}</p>
+       <b>Seiten:</b> ${summary.pagesCrawled} • <b>Downloads:</b> ${summary.downloadsFound}${typeSummary?` (${escapeHtml(typeSummary)})`:''}</p>
     <p><b>Gesamt:</b> ${badge(vereinbarkeitsStatus(summary.totals.violations, summary.score).level as any)}
       &nbsp;Score: ${summary.score}/100 • Verstöße: ${summary.totals.violations} • Warnungen: ${summary.totals.incomplete}
     </p>
@@ -119,6 +123,12 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${dlRows || '<tr><td colspan="4"><small>Keine prüfbaren Downloads.</small></td></tr>'}</tbody>
     </table>
 
+    <h2>Dynamische Interaktionen</h2>
+    <table>
+      <thead><tr><th>URL</th><th>Aktion</th><th>Selektor</th><th>Zeit</th></tr></thead>
+      <tbody>${(dynamic||[]).map((d:any)=>`<tr><td>${escapeHtml(d.url)}</td><td>${escapeHtml(d.action)}</td><td>${escapeHtml(d.selector)}</td><td>${escapeHtml(d.timestamp)}</td></tr>`).join('') || '<tr><td colspan="4"><small>Keine Interaktionen protokolliert.</small></td></tr>'}</tbody>
+    </table>
+
     <p><small>Hinweis: Automatisierte Prüfung (axe-core, heuristische Datei-Checks). Für Rechtsverbindlichkeit ggf. ergänzende manuelle Prüfungen.</small></p>
   </body></html>`;
 }
@@ -128,8 +138,16 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   const top = deriveTopFindings(issues, 8);
   const today = new Date().toISOString().slice(0,10);
 
+  const plainMap: Record<string, string> = {
+    "link-name": "Links haben kein erkennbares Ziel",
+    "image-alt": "Bilder ohne Alternativtext",
+    "color-contrast": "Texte haben zu wenig Farbkontrast",
+    "html-has-lang": "Seite nennt keine Sprache",
+    "document-title": "Seite hat keinen Titel"
+  };
+
   const topList = top.length
-    ? top.map((v) => `<li>${escapeHtml(v.help)} (WCAG: ${escapeHtml((v.wcag||[]).join(", "))})</li>`).join("")
+    ? top.map((v) => `<li>${escapeHtml(plainMap[v.id] || v.help)}${v.wcag.length?` (WCAG: ${escapeHtml(v.wcag.join(', '))})`:''}</li>`).join("")
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
 
   const manual = (profile.manualFindings || []).map((m) =>
@@ -193,6 +211,13 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
   const status = vereinbarkeitsStatus(summary.totals.violations, summary.score);
   const top = deriveTopFindings(issues, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
+  const plainMap: Record<string, string> = {
+    "link-name": "Links haben kein erkennbares Ziel",
+    "image-alt": "Bilder ohne Alternativtext",
+    "color-contrast": "Texte haben zu wenig Farbkontrast",
+    "html-has-lang": "Seite nennt keine Sprache",
+    "document-title": "Seite hat keinen Titel"
+  };
 
   return {
     "@context": "https://schema.org",
@@ -206,7 +231,7 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "conformanceStatus": status.code, // full | partial | non
       "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
       "method": profile.legal?.method || "automatisierte Selbstbewertung",
-      "topFindings": top.map(t => ({ text: t.help, wcag: t.wcag }))
+      "topFindings": top.map(t => ({ id: t.id, text: plainMap[t.id] || t.help, wcag: t.wcag }))
     },
     "provider": {
       "name": profile.organisationName || profile.websiteOwner || ""
@@ -228,13 +253,14 @@ async function main() {
   const summary: ScanSummary = JSON.parse(await fs.readFile(path.join(outDir, "scan.json"), "utf-8"));
   const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
   let downloadsReport: any[] = []; try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
+  let dynamicInteractions: any[] = []; try { dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "dynamic_interactions.json"), "utf-8")); } catch {}
 
   // Profil laden
   let profile: Profile = {};
   try { profile = JSON.parse(await fs.readFile(path.join(process.cwd(), "config", "public_statement.profile.json"), "utf-8")); } catch {}
 
   // HTML bauen
-  const internalHtml = renderInternalHTML(summary, issues, downloadsReport);
+  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions);
   const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile);
 
   // HTML speichern
