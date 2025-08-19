@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/ombudspersons.schema.json",
+  "type": "object",
+  "required": ["version", "defaultJurisdiction", "entries"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "defaultJurisdiction": { "type": "string", "pattern": "^DE-(BUND|BW|BY|BE|BB|HB|HH|HE|MV|NI|NW|RP|SL|SN|ST|SH|TH)$" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["jurisdiction", "label", "authorityType"],
+        "properties": {
+          "jurisdiction": { "type": "string" },
+          "label": { "type": "string", "minLength": 3 },
+          "authorityType": { "type": "string", "enum": ["federal", "state"] },
+          "website": { "type": "string" },
+          "email": { "type": "string" },
+          "phone": { "type": "string" },
+          "postalAddress": { "type": "string" },
+          "legalBasis": { "type": "array", "items": { "type": "string" } },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

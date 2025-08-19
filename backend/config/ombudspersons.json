@@ -1,12 +1,39 @@
 {
-  "DE": {
-    "name": "Bundesfachstelle für Barrierefreiheit",
-    "url": "https://www.bundesfachstelle-barrierefreiheit.de/",
-    "email": "info@bundesfachstelle.de"
-  },
-  "TH": {
-    "name": "Ombudsstelle Thüringen",
-    "url": "https://thueringen.de/ombudsstelle",
-    "email": "ombudsstelle@thueringen.de"
-  }
+  "$schema": "https://example.invalid/schemas/ombudspersons.schema.json",
+  "version": 1,
+  "defaultJurisdiction": "DE-BUND",
+  "entries": [
+    {
+      "jurisdiction": "DE-BUND",
+      "label": "Schlichtungsstelle nach § 16 BGG (Bund)",
+      "authorityType": "federal",
+      "website": "TODO",
+      "email": "TODO",
+      "phone": "TODO",
+      "postalAddress": "TODO",
+      "legalBasis": [
+        "BGG §16",
+        "BITV 2.0",
+        "WCAG 2.1 / EN 301 549"
+      ],
+      "notes": "Zuständig, wenn Bundesbehörden/Gegenstände des Bundes betroffen sind."
+    },
+
+    { "jurisdiction": "DE-BW", "label": "Durchsetzungsstelle Baden-Württemberg", "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-BY", "label": "Durchsetzungsstelle Bayern",              "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-BE", "label": "Durchsetzungsstelle Berlin",              "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-BB", "label": "Durchsetzungsstelle Brandenburg",         "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-HB", "label": "Durchsetzungsstelle Bremen",              "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-HH", "label": "Durchsetzungsstelle Hamburg",             "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-HE", "label": "Durchsetzungsstelle Hessen",              "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-MV", "label": "Durchsetzungsstelle Mecklenburg-Vorpommern","authorityType": "state","website":"TODO","email":"TODO","phone":"TODO","postalAddress":"TODO","legalBasis":["L-BGG/Landesregelungen","BITV 2.0"],"notes":"" },
+    { "jurisdiction": "DE-NI", "label": "Durchsetzungsstelle Niedersachsen",       "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-NW", "label": "Durchsetzungsstelle Nordrhein-Westfalen", "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-RP", "label": "Durchsetzungsstelle Rheinland-Pfalz",     "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-SL", "label": "Durchsetzungsstelle Saarland",            "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-SN", "label": "Durchsetzungsstelle Sachsen",             "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-ST", "label": "Durchsetzungsstelle Sachsen-Anhalt",      "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-SH", "label": "Durchsetzungsstelle Schleswig-Holstein",  "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" },
+    { "jurisdiction": "DE-TH", "label": "Durchsetzungsstelle Thüringen",           "authorityType": "state", "website": "TODO", "email": "TODO", "phone": "TODO", "postalAddress": "TODO", "legalBasis": ["L-BGG/Landesregelungen","BITV 2.0"], "notes": "" }
+  ]
 }

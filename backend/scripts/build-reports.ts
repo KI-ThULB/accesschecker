@@ -10,6 +10,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import { contentTypeToLabel } from "./lib/mime.js";
+import { loadOmbudsConfig, resolveJurisdiction, getEntry } from "./lib/ombuds.js";
+import { pathToFileURL } from "node:url";
 
 type ScanSummary = {
   startUrl: string;
@@ -18,6 +20,7 @@ type ScanSummary = {
   downloadsFound: number;
   score: { overall: number; bySeverity: { critical: number; serious: number; moderate: number; minor: number } };
   totals: { violations: number; incomplete: number };
+  jurisdiction?: string;
 };
 
 type Profile = {
@@ -25,7 +28,6 @@ type Profile = {
   websiteOwner?: string;
   jurisdiction?: { country?: string; federalState?: string };
   contact?: { email?: string; phone?: string; url?: string; responseTimeDays?: number };
-  enforcement?: { name?: string; url?: string; email?: string };
   legal?: { standard?: string; method?: string; language?: string };
   statement?: {
     updateFrequencyDays?: number;
@@ -139,7 +141,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
   const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   const top = deriveTopFindings(issues, 8);
   const today = new Date().toISOString().slice(0,10);
@@ -199,10 +201,13 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     <h2>5. Durchsetzungsverfahren</h2>
     <p>Wenn Sie keine zufriedenstellende Antwort erhalten, können Sie sich an die zuständige Durchsetzungsstelle wenden:</p>
     <ul>
-      ${profile.enforcement?.name ? `<li>${escapeHtml(profile.enforcement.name)}</li>` : ""}
-      ${profile.enforcement?.url ? `<li>Website: <a href="${escapeHtml(profile.enforcement.url)}">${escapeHtml(profile.enforcement.url)}</a></li>` : ""}
-      ${profile.enforcement?.email ? `<li>E-Mail: <a href="mailto:${escapeHtml(profile.enforcement.email)}">${escapeHtml(profile.enforcement.email)}</a></li>` : ""}
+      <li>${escapeHtml(authority.label)}</li>
+      ${authority.website && !authority.website.includes('TODO') ? `<li>Website: <a href="${escapeHtml(authority.website)}">${escapeHtml(authority.website)}</a></li>` : ''}
+      ${authority.email && !authority.email.includes('TODO') ? `<li>E-Mail: <a href="mailto:${escapeHtml(authority.email)}">${escapeHtml(authority.email)}</a></li>` : ''}
+      ${authority.phone && !authority.phone.includes('TODO') ? `<li>Telefon: ${escapeHtml(authority.phone)}</li>` : ''}
+      ${authority.postalAddress && !authority.postalAddress.includes('TODO') ? `<li>Adresse: ${escapeHtml(authority.postalAddress)}</li>` : ''}
     </ul>
+    ${enforcementDataStatus === 'incomplete' ? `<p>Die Kontaktdaten der zuständigen Durchsetzungsstelle werden kurzfristig ergänzt. Bis dahin wenden Sie sich bitte an die bundesweite Schlichtungsstelle.</p>` : ''}
 
     <h2>6. Hinweise zu Dokumenten/Downloads</h2>
     <p>Prüfbare Dateien insgesamt: <b>${downloadsReport?.length || 0}</b>.
@@ -213,7 +218,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
   const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   const top = deriveTopFindings(issues, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
@@ -250,11 +255,21 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "url": profile.contact?.url || ""
     },
     "isAccessibleForFree": true,
-    "jurisdiction": profile.jurisdiction || {}
+    "jurisdiction": profile.jurisdiction || {},
+    "enforcement": {
+      "jurisdiction": authority.jurisdiction,
+      "label": authority.label,
+      "website": authority.website,
+      "email": authority.email,
+      "phone": authority.phone,
+      "postalAddress": authority.postalAddress,
+      "legalBasis": authority.legalBasis || []
+    },
+    ...(enforcementDataStatus ? { enforcementDataStatus } : {})
   };
 }
 
-async function main() {
+export async function main() {
   const outDir = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
   const summary: ScanSummary = JSON.parse(await fs.readFile(path.join(outDir, "scan.json"), "utf-8"));
   const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
@@ -264,22 +279,28 @@ async function main() {
   // Profil laden
   let profile: Profile = {};
   try { profile = JSON.parse(await fs.readFile(path.join(process.cwd(), "config", "public_statement.profile.json"), "utf-8")); } catch {}
-  try {
-    const ombuds = JSON.parse(await fs.readFile(path.join(process.cwd(), 'config', 'ombudspersons.json'), 'utf-8'));
-    const key = profile.jurisdiction?.federalState || profile.jurisdiction?.country || 'DE';
-    if (ombuds[key] && !profile.enforcement) profile.enforcement = ombuds[key];
-  } catch {}
+  let publicConfig: any = {};
+  try { publicConfig = JSON.parse(await fs.readFile(path.join(process.cwd(), 'config', 'scan.defaults.json'), 'utf-8')); } catch {}
+  if (summary.jurisdiction) publicConfig.jurisdiction = summary.jurisdiction;
+
+  const ombuds = await loadOmbudsConfig();
+  const j = resolveJurisdiction({ configOverride: publicConfig?.jurisdiction, fromDomain: summary.startUrl });
+  const authority = getEntry(j);
+  let enforcementDataStatus: string | undefined;
+  if (authority.jurisdiction !== j) enforcementDataStatus = 'fallback';
+  const hasTodo = ['website','email','phone','postalAddress'].some((k) => (authority as any)[k]?.includes('TODO'));
+  if (hasTodo) enforcementDataStatus = 'incomplete';
 
   // HTML bauen
   const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions);
-  const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile);
+  const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus);
 
   // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-  const statementJson = buildStatementJSON(summary, issues, profile);
+  const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken
@@ -297,4 +318,6 @@ async function main() {
   console.log("✅ Reports + maschinenlesbare Erklärung erzeugt.");
 }
 
-main().catch((e)=>{ console.error("Report-Build fehlgeschlagen:", e); process.exit(1); });
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e)=>{ console.error("Report-Build fehlgeschlagen:", e); process.exit(1); });
+}

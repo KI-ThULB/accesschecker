@@ -48,3 +48,12 @@ Wichtige Flags:
 - `--simulate-browser` – führt Scrollen und Interaktionen (Tabs, Menüs, Accordeons) aus
 - `--scan-iframes` – prüft iframes gleicher Origin
 - `--respect-robots` – beachtet `robots.txt`
+- `--jurisdiction DE-XX` – setzt die zuständige Durchsetzungsstelle (Bund/Land)
+
+## Durchsetzungsstellen (Bund/Land)
+
+- Die Zuordnung von Bundes- und Landesstellen erfolgt über `config/ombudspersons.json`.
+- Die Datei ist maschinenlesbar und wird beim Report-Build strikt gegen `config/schemas/ombudspersons.schema.json` validiert.
+- Die Jurisdiktion kann über `--jurisdiction DE-XX` oder in `config/scan.defaults.json` festgelegt werden.
+- Fehlt eine Zuordnung, wird automatisch die Bundes-Schlichtungsstelle verwendet und im JSON markiert.
+- Enthalten Einträge Platzhalter wie `TODO`, wird ein Hinweis im öffentlichen Bericht ausgegeben.
