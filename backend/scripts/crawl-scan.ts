@@ -367,7 +367,10 @@ async function main() {
         await autoScroll(page, logInteraction, WAIT_AFTER_LOAD);
         await gentleInteractions(page, logInteraction);
 
-        const axe = new AxeBuilder({ page });
+        // "link-in-text-block" often yields an excessive number of
+        // findings on larger sites and can exceed GitHub's annotation
+        // limits. It is disabled here to keep scan results manageable.
+        const axe = new AxeBuilder({ page }).disableRules(["link-in-text-block"]);
         const res = await axe.analyze();
         const violations: Violation[] = (res.violations || []) as any[];
         const incomplete: any[] = (res.incomplete || []) as any[];
