@@ -6,9 +6,8 @@ import unzipper from "unzipper";
 export interface DownloadReport {
   url: string;
   contentType: string;
-  size: number;
+  sizeKB: number;
   checks: { name: string; passed: boolean; details?: string }[];
-  legacyFormat: boolean;
   needsManualReview: boolean;
 }
 
@@ -45,8 +44,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadReport[]> 
       out.push({
         url,
         contentType: t === "doc" ? "application/msword" : "application/vnd.ms-powerpoint",
-        size: 0,
-        legacyFormat: true,
+        sizeKB: 0,
         needsManualReview: true,
         checks: [{ name: "legacy-format", passed: false, details: "Nicht automatisch prüfbar" }],
       });
@@ -93,8 +91,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadReport[]> 
       out.push({
         url,
         contentType,
-        size: raw.length,
-        legacyFormat: false,
+        sizeKB: Math.round(raw.length / 1024),
         needsManualReview,
         checks,
       });
@@ -102,8 +99,7 @@ export async function checkDownloads(urls: string[]): Promise<DownloadReport[]> 
       out.push({
         url,
         contentType: "unknown",
-        size: 0,
-        legacyFormat: false,
+        sizeKB: 0,
         needsManualReview: true,
         checks: [{ name: "download-error", passed: false, details: e?.message || String(e) }],
       });
@@ -123,6 +119,8 @@ function analyzePdf(buf: Buffer): { ok: boolean; needsManualReview: boolean; ima
   const hasFonts = /\/Font\s*<</.test(txt);
   const hasOutline = /\/Outlines\s*<</.test(txt);
   const hasTitle = /\/Title\s*\([^)]*\)/.test(txt);
+  const hasLang = /\/Lang\s*\([^)]*\)/i.test(txt);
+  const hasHeading = /\/H[1-6]\b/.test(txt);
   const imageCount = (txt.match(/\/Subtype\s*\/Image/g) || []).length;
   const altCount = (txt.match(/\/Alt\s*\(/g) || []).length;
   const imagesWithoutAlt = imageCount > altCount;
@@ -134,9 +132,11 @@ function analyzePdf(buf: Buffer): { ok: boolean; needsManualReview: boolean; ima
   checks.push({ name: "fonts-embedded", passed: hasFonts });
   checks.push({ name: "outline-present", passed: hasOutline });
   checks.push({ name: "document-title", passed: hasTitle });
+  checks.push({ name: "language-set", passed: hasLang });
+  checks.push({ name: "headings-present", passed: hasHeading });
   checks.push({ name: "images-have-alt", passed: !imagesWithoutAlt, details: `images:${imageCount} alt:${altCount}` });
 
-  const ok = hasStruct && hasMarkInfo && hasOutline && hasTitle && !imagesWithoutAlt;
+  const ok = hasStruct && hasMarkInfo && hasOutline && hasTitle && hasLang && !imagesWithoutAlt;
   const needsManualReview = !hasOutline;
   return { ok, checks, needsManualReview, imagesWithoutAlt };
 }
@@ -180,10 +180,12 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
       const doc = hasDoc ? fs.readFileSync(docXml, "utf-8") : "";
       const hasHeading = /w:pPr[\s\S]*w:pStyle[^>]*w:val="Heading[1-6]"/i.test(doc) || /w:outlineLvl/i.test(doc);
       const hasAlt = /wp:docPr[^>]*(?:descr|title)="[^"]+"/i.test(doc);
+      const hasTableHeader = !/w:tbl/i.test(doc) || /w:tblHeader/i.test(doc);
       checks.push({ name: "oox-structure", passed: hasDoc && hasStyles });
       checks.push({ name: "headings-present", passed: hasHeading });
       checks.push({ name: "alt-texts-present", passed: hasAlt });
-      const ok = hasHeading && hasAlt;
+      checks.push({ name: "table-headers", passed: hasTableHeader });
+      const ok = hasHeading && hasAlt && hasTableHeader;
       return { ok, checks };
     } else {
       const pres = path.join(tmpDir, "ppt/presentation.xml");
@@ -192,10 +194,13 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
       const slideXml = fs.existsSync(slide1) ? fs.readFileSync(slide1, "utf-8") : "";
       const hasTitlePH = /<p:ph[^>]*type="title"/i.test(slideXml);
       const hasAlt = /<p:cNvPr[^>]*(?:descr|title)="[^"]+"/i.test(slideXml);
+      const hasTable = /<a:tbl/i.test(slideXml);
+      const hasTableHeader = !hasTable || /<a:tblPr[^>]*firstRow="1"/i.test(slideXml);
       checks.push({ name: "oox-structure", passed: hasPres && fs.existsSync(slide1) });
       checks.push({ name: "title-placeholder", passed: hasTitlePH });
       checks.push({ name: "alt-texts-present", passed: hasAlt });
-      const ok = hasTitlePH && hasAlt;
+      checks.push({ name: "table-headers", passed: hasTableHeader });
+      const ok = hasTitlePH && hasAlt && hasTableHeader;
       return { ok, checks };
     }
   } finally {
