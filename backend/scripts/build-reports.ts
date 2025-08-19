@@ -9,6 +9,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
+import { contentTypeToLabel } from "./lib/mime.js";
 
 type ScanSummary = {
   startUrl: string;
@@ -85,14 +86,18 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   }).join("");
 
   const typeCounts: Record<string, number> = {};
-  for (const d of downloadsReport || []) typeCounts[d.type] = (typeCounts[d.type] || 0) + 1;
-  const typeSummary = Object.entries(typeCounts).map(([t,c])=>`${t.toUpperCase()}: ${c}`).join(', ');
+  for (const d of downloadsReport || []) {
+    const label = contentTypeToLabel(d.contentType, d.url);
+    d.__label = label;
+    typeCounts[label] = (typeCounts[label] || 0) + 1;
+  }
+  const typeSummary = Object.entries(typeCounts).map(([t,c])=>`${t}: ${c}`).join(', ');
 
   const dlRows = (downloadsReport||[]).map((d: any) => {
     const checks = (d.checks||[]).map((c:any)=>`<li>${escapeHtml(c.name)}: ${c.passed?"✔︎":"✘"}${c.details?` – ${escapeHtml(c.details)}`:""}</li>`).join("");
     return `<tr>
       <td><a href="${escapeHtml(d.url)}">${escapeHtml(d.url)}</a></td>
-      <td>${escapeHtml(String(d.type).toUpperCase())}</td>
+      <td>${escapeHtml(d.__label)}</td>
       <td>${d.ok?"OK":"<b>Nicht bestanden</b>"}</td>
       <td><ul>${checks}</ul>${d.note?`<small>${escapeHtml(d.note)}</small>`:""}</td>
     </tr>`;
