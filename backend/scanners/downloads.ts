@@ -3,18 +3,18 @@ import path from "node:path";
 import fetch from "node-fetch";
 import unzipper from "unzipper";
 
-export interface DownloadCheck {
+export interface DownloadReport {
   url: string;
-  type: "pdf" | "doc" | "docx" | "ppt" | "pptx" | "csv" | "txt" | "other";
-  ok: boolean;
+  contentType: string;
+  size: number;
   checks: { name: string; passed: boolean; details?: string }[];
-  note?: string;
-  needsManualReview?: boolean;
-  imagesWithoutAlt?: boolean;
-  hasHeaderRow?: boolean;
+  legacyFormat: boolean;
+  needsManualReview: boolean;
 }
 
-function extType(u: string): DownloadCheck["type"] {
+type DLType = "pdf" | "doc" | "docx" | "ppt" | "pptx" | "odt" | "ods" | "odp" | "csv" | "txt" | "other";
+
+function extType(u: string): DLType {
   const m = u.toLowerCase().match(/\.([a-z0-9]+)(?:$|\?)/);
   const ext = m ? m[1] : "";
   if (ext === "pdf") return "pdf";
@@ -22,6 +22,9 @@ function extType(u: string): DownloadCheck["type"] {
   if (ext === "pptx") return "pptx";
   if (ext === "doc") return "doc";
   if (ext === "ppt") return "ppt";
+  if (ext === "odt") return "odt";
+  if (ext === "ods") return "ods";
+  if (ext === "odp") return "odp";
   if (ext === "csv") return "csv";
   if (ext === "txt") return "txt";
   return "other";
@@ -32,17 +35,19 @@ function limitBuffer(buf: Buffer, maxBytes = 5 * 1024 * 1024) {
   return buf.length > maxBytes ? buf.slice(0, maxBytes) : buf;
 }
 
-export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
-  const out: DownloadCheck[] = [];
+export async function checkDownloads(urls: string[]): Promise<DownloadReport[]> {
+  const out: DownloadReport[] = [];
   for (const url of urls) {
     const t = extType(url);
 
     // Legacy-Binärformate: nicht automatisch prüfbar (DOC/PPT)
     if (t === "doc" || t === "ppt") {
       out.push({
-        url, type: t, ok: false,
-        // HINWEIS: Hinweis zur Konvertierung ausgeben
-        note: "Altes Binary-Format (DOC/PPT) – automatische BITV/WCAG-Prüfung nicht möglich. Bitte in ein modernes, barrierefrei prüfbares Format (DOCX/PPTX oder PDF/UA) konvertieren.",
+        url,
+        contentType: t === "doc" ? "application/msword" : "application/vnd.ms-powerpoint",
+        size: 0,
+        legacyFormat: true,
+        needsManualReview: true,
         checks: [{ name: "legacy-format", passed: false, details: "Nicht automatisch prüfbar" }],
       });
       continue;
@@ -57,29 +62,51 @@ export async function checkDownloads(urls: string[]): Promise<DownloadCheck[]> {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = Buffer.from(await res.arrayBuffer());
       const buf = limitBuffer(raw);
+      const contentType = res.headers.get("content-type") || `application/${t}`;
+      let needsManualReview = false;
+      let checks: { name: string; passed: boolean; details?: string }[] = [];
+      let ok = false;
 
       if (t === "pdf") {
-        const { ok, checks, needsManualReview, imagesWithoutAlt } = analyzePdf(buf);
-        out.push({ url, type: t, ok, checks, needsManualReview, imagesWithoutAlt });
-        continue;
-      }
-      if (t === "docx" || t === "pptx") {
-        const { ok, checks } = await analyzeOOXML(buf, t);
-        out.push({ url, type: t, ok, checks });
-        continue;
-      }
-      if (t === "csv" || t === "txt") {
-        const { ok, checks, hasHeaderRow } = analyzeCsvTxt(buf);
-        out.push({ url, type: t, ok, checks, hasHeaderRow });
-        continue;
+        const resPdf = analyzePdf(buf);
+        checks = resPdf.checks;
+        needsManualReview = resPdf.needsManualReview;
+        ok = resPdf.ok;
+      } else if (t === "docx" || t === "pptx") {
+        const r = await analyzeOOXML(buf, t);
+        checks = r.checks;
+        ok = r.ok;
+      } else if (t === "odt" || t === "ods" || t === "odp") {
+        const r = await analyzeODF(buf, t);
+        checks = r.checks;
+        ok = r.ok;
+      } else if (t === "csv" || t === "txt") {
+        const r = analyzeCsvTxt(buf);
+        checks = r.checks;
+        ok = r.ok;
+      } else {
+        checks = [{ name: "unsupported", passed: false, details: "Nicht unterstütztes Format" }];
       }
 
+      if (!needsManualReview) needsManualReview = !ok;
+
       out.push({
-        url, type: "other", ok: false,
-        checks: [{ name: "unsupported", passed: false, details: "Nicht unterstütztes Format" }],
+        url,
+        contentType,
+        size: raw.length,
+        legacyFormat: false,
+        needsManualReview,
+        checks,
       });
     } catch (e: any) {
-      out.push({ url, type: t, ok: false, checks: [{ name: "download-error", passed: false, details: e?.message || String(e) }] });
+      out.push({
+        url,
+        contentType: "unknown",
+        size: 0,
+        legacyFormat: false,
+        needsManualReview: true,
+        checks: [{ name: "download-error", passed: false, details: e?.message || String(e) }],
+      });
     }
   }
   return out;
@@ -114,14 +141,18 @@ function analyzePdf(buf: Buffer): { ok: boolean; needsManualReview: boolean; ima
   return { ok, checks, needsManualReview, imagesWithoutAlt };
 }
 
-function analyzeCsvTxt(buf: Buffer): { ok: boolean; hasHeaderRow: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
+function analyzeCsvTxt(buf: Buffer): { ok: boolean; checks: { name: string; passed: boolean; details?: string }[] } {
   const txt = buf.toString('utf-8');
+  const utf8Ok = !txt.includes('\uFFFD');
   const firstLine = txt.split(/\r?\n/)[0] || '';
   const sep = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ',';
   const cells = firstLine.split(sep).map(c => c.trim());
   const headerOk = cells.length > 1 && cells.every(c => /^[A-Za-z0-9 _-]+$/.test(c));
-  const checks = [{ name: 'header-row', passed: headerOk }];
-  return { ok: headerOk, hasHeaderRow: headerOk, checks };
+  const checks = [
+    { name: 'utf8', passed: utf8Ok },
+    { name: 'header-row', passed: headerOk },
+  ];
+  return { ok: utf8Ok && headerOk, checks };
 }
 
 async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: boolean; checks: { name: string; passed: boolean; details?: string }[] }> {
@@ -173,4 +204,37 @@ async function analyzeOOXML(buf: Buffer, kind: "docx" | "pptx"): Promise<{ ok: b
   }
 }
 
-export { analyzePdf };
+async function analyzeODF(buf: Buffer, kind: "odt" | "ods" | "odp"): Promise<{ ok: boolean; checks: { name: string; passed: boolean; details?: string }[] }> {
+  const tmpDir = fs.mkdtempSync(path.join(process.cwd(), "odf-"));
+  try {
+    const zip = await unzipper.Open.buffer(buf);
+    await Promise.all(zip.files.map(async (f: any) => {
+      const out = path.join(tmpDir, f.path);
+      const dir = path.dirname(out);
+      fs.mkdirSync(dir, { recursive: true });
+      if (f.type === "Directory") return;
+      const rs = f.stream();
+      const ws = fs.createWriteStream(out);
+      await new Promise<void>((res, rej) => { rs.pipe(ws).on("finish", () => res()).on("error", rej); });
+    }));
+
+    const contentXml = path.join(tmpDir, "content.xml");
+    const metaXml = path.join(tmpDir, "meta.xml");
+    const hasContent = fs.existsSync(contentXml);
+    const hasMeta = fs.existsSync(metaXml);
+    const content = hasContent ? fs.readFileSync(contentXml, "utf-8") : "";
+    const meta = hasMeta ? fs.readFileSync(metaXml, "utf-8") : "";
+    const hasTitle = /<dc:title>[^<]+<\/dc:title>/i.test(meta);
+    const hasAlt = /draw:desc|svg:desc|svg:title/i.test(content);
+    const checks = [
+      { name: "odf-structure", passed: hasContent && hasMeta },
+      { name: "has-title", passed: hasTitle },
+      { name: "alt-texts-present", passed: hasAlt },
+    ];
+    const ok = hasContent && hasMeta && hasTitle;
+    return { ok, checks };
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+}
+export { analyzePdf, analyzeOOXML, analyzeODF, analyzeCsvTxt };
