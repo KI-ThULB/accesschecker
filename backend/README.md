@@ -35,6 +35,8 @@ Ergebnis: HTML + PDF im Ordner `out/`.
 
 Der Hauptscanner `crawl-scan.ts` lässt sich über Umgebungsvariablen bzw. Flags steuern. Beispiele:
 
+> Hinweis: Die sehr umfangreiche axe-Regel `link-in-text-block` ist standardmäßig deaktiviert, um eine Flut identischer Meldungen zu vermeiden.
+
 ```bash
 START_URL=https://www.w3.org/WAI/demos/bad/ \
 RESPECT_ROBOTS=true \
