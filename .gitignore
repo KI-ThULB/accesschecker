@@ -1,0 +1,12 @@
+# Ignore Node.js dependencies
+backend/node_modules/
+
+# Output directories
+backend/out/
+backend/dist/
+
+# Logs and temporary files
+*.log
+
+# IDE files
+.DS_Store
