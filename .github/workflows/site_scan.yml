@@ -89,6 +89,10 @@ jobs:
         run: npx tsx scripts/build-reports.ts
         working-directory: backend
 
+      - name: Validate enforcement data
+        run: |
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('backend/out/public_statement.json','utf-8'));if(!j.enforcement||!j.enforcement.label){console.error('missing enforcement.label');process.exit(1);}if(j.enforcementDataStatus==='incomplete'){console.warn('⚠️ enforcement data incomplete');}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

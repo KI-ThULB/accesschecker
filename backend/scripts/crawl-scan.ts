@@ -44,6 +44,7 @@ type Defaults = {
   waitMinMs: number;
   waitMaxMs: number;
   userAgent: string;
+  jurisdiction?: string;
 };
 
 type Violation = {
@@ -282,6 +283,16 @@ async function main() {
   const WAIT_MIN = envNum("WAIT_MIN_MS", defaults.waitMinMs ?? 200);
   const WAIT_MAX = envNum("WAIT_MAX_MS", defaults.waitMaxMs ?? 600);
 
+  function cliArg(name: string): string | undefined {
+    const prefix = `--${name}`;
+    for (let i = 2; i < process.argv.length; i++) {
+      const a = process.argv[i];
+      if (a === prefix && i + 1 < process.argv.length) return process.argv[i + 1];
+      if (a.startsWith(prefix + '=')) return a.slice(prefix.length + 1);
+    }
+  }
+  const jurisdiction = cliArg('jurisdiction') || defaults.jurisdiction;
+
   const stripHash = !respectHashRoutes;
   const origin = new URL(START_URL).origin;
   const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
@@ -494,7 +505,8 @@ async function main() {
       totals: {
         violations: issues.length,
         incomplete: pageResults.reduce((a, p) => a + p.incomplete.length, 0)
-      }
+      },
+      jurisdiction
     };
 
     await fs.writeFile(path.join(OUTPUT_DIR, "scan.json"), JSON.stringify(summary, null, 2), "utf-8");

@@ -11,5 +11,6 @@
   "waitAfterLoadMs": 600,
   "waitMinMs": 200,
   "waitMaxMs": 600,
-  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)"
+  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)",
+  "jurisdiction": "DE-TH"
 }
