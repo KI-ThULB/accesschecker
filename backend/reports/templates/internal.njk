@@ -65,7 +65,7 @@
         {% for check in file.checks %}
         <tr>
           <td>{{ file.url }}</td>
-          <td>{{ file.type }}</td>
+          <td>{{ file.contentType }}</td>
           <td>{{ check.name }}</td>
           <td>{{ check.passed ? "OK" : "Fehler" }}</td>
           <td>{{ check.details }}</td>

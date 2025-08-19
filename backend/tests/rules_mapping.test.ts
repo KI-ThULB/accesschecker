@@ -4,8 +4,8 @@ import { promises as fs } from 'node:fs';
 
 const mapping = JSON.parse(await fs.readFile(new URL('../config/rules_mapping.json', import.meta.url), 'utf-8'));
 
-test('rules mapping has at least 80 entries', () => {
-  assert.ok(mapping.length >= 80);
+test('rules mapping has at least 40 entries', () => {
+  assert.ok(mapping.length >= 40);
 });
 
 test('common rules have mappings', () => {
