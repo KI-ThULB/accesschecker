@@ -18,6 +18,8 @@ import fetch from "node-fetch";
 import { chromium, Page } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
 import { checkDownloads } from "../scanners/downloads.js";
+import type { Issue } from "../types/Issue.js";
+import type { DownloadFinding } from "../types/DownloadFinding.js";
 
 // Defaults lesen (robust, ohne TS-assert JSON)
 async function readDefaults() {
@@ -48,7 +50,8 @@ type Violation = {
   id: string;
   impact?: "minor" | "moderate" | "serious" | "critical";
   help?: string;
-  nodes?: { target: string[]; failureSummary?: string }[];
+  helpUrl?: string;
+  nodes?: { target: string[]; html?: string; failureSummary?: string }[];
   wcagRefs?: string[];
   bitvRefs?: string[];
   en301549Refs?: string[];
@@ -127,15 +130,30 @@ async function readSitemap(origin: string): Promise<string[]> {
   } catch { return []; }
 }
 
-function computeScore(violations: Violation[]): number {
-  let score = 100;
-  const weights: Record<string, number> = { critical: 6, serious: 4, moderate: 2, minor: 1 };
-  for (const v of violations) {
-    const w = weights[v.impact || "moderate"] || 2;
-    const count = Math.min(5, v.nodes?.length ?? 1);
-    score -= Math.min(35, w * count);
+type Severity = "critical" | "serious" | "moderate" | "minor";
+function computeScore(issues: Issue[]) {
+  const weights: Record<Severity, number> = {
+    critical: -5,
+    serious: -3,
+    moderate: -2,
+    minor: -1,
+  };
+  const counts: Record<Severity, number> = {
+    critical: 0,
+    serious: 0,
+    moderate: 0,
+    minor: 0,
+  };
+  for (const i of issues) {
+    const sev = (i.impact || "moderate") as Severity;
+    counts[sev] += 1;
   }
-  return Math.max(0, Math.min(100, score));
+  let score = 100;
+  for (const sev of Object.keys(counts) as Severity[]) {
+    score += counts[sev] * weights[sev];
+  }
+  if (score < 0) score = 0;
+  return { overall: score, bySeverity: counts };
 }
 
 async function clickConsent(page: Page) {
@@ -158,6 +176,19 @@ async function clickConsent(page: Page) {
   } catch {}
 }
 
+async function autoScroll(page: Page, log: (a: string, s: string) => void, wait: number) {
+  let lastHeight = -1;
+  for (let i = 0; i < 10; i++) {
+    const h = await page.evaluate(() => document.body.scrollHeight);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    log('scroll', 'window');
+    await page.waitForTimeout(wait);
+    const nh = await page.evaluate(() => document.body.scrollHeight);
+    if (nh === h || nh === lastHeight) break;
+    lastHeight = nh;
+  }
+}
+
 async function gentleInteractions(page: Page, log: (a: string, s: string) => void) {
   try {
     const details = await page.$$("details:not([open])");
@@ -176,6 +207,16 @@ async function gentleInteractions(page: Page, log: (a: string, s: string) => voi
         const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
         await el.click();
         log('click', sel);
+      } catch {}
+    }
+  } catch {}
+  try {
+    const accs = await page.$$('[data-accordion]');
+    for (const el of accs.slice(0, 6)) {
+      try {
+        const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        await el.click();
+        log('accordion-toggle', sel);
       } catch {}
     }
   } catch {}
@@ -214,6 +255,8 @@ async function gentleInteractions(page: Page, log: (a: string, s: string) => voi
         const sel = await el.evaluate(e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
         await el.evaluate((e: any) => e.showModal?.());
         log('open-dialog', sel);
+        await page.keyboard.press('Escape');
+        log('close-dialog', sel);
       } catch {}
     }
   } catch {}
@@ -248,6 +291,7 @@ async function main() {
   const queue: QueueItem[] = [{ url: normalizeUrl(START_URL, stripHash), depth: 0 }];
   const downloads = new Set<string>();
   const pageResults: PageResult[] = [];
+  const issues: Issue[] = [];
   const interactionLogs: InteractionLog[] = [];
 
   // robots + sitemap
@@ -294,7 +338,8 @@ async function main() {
       visited.add(url);
 
       try {
-        console.log(`🔎 Scanne [d=${depth}]: ${url}`);
+        const startT = Date.now();
+        console.log(JSON.stringify({ level: 'info', msg: 'scan-start', url, depth }));
         const resp = await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
 
         let metaRobots = "";
@@ -308,9 +353,7 @@ async function main() {
         }
 
         if (consentClick) { await clickConsent(page); }
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        logInteraction('scroll', 'window');
-        await page.waitForTimeout(WAIT_AFTER_LOAD);
+        await autoScroll(page, logInteraction, WAIT_AFTER_LOAD);
         await gentleInteractions(page, logInteraction);
 
         const axe = new AxeBuilder({ page });
@@ -333,10 +376,31 @@ async function main() {
               v.legalContext = m.legalContext || "";
               if (!v.impact && m.impactDefault) v.impact = m.impactDefault;
             }
+            const examples = (v.nodes || []).slice(0, 3).map(n => ({
+              selector: n.target?.[0] || '',
+              context: (n.html || '').replace(/<[^>]+>/g, '').trim().slice(0, 120),
+              pageUrl: url,
+            }));
+            while (examples.length < 3) {
+              examples.push({ selector: '', context: '', pageUrl: url });
+            }
+            issues.push({
+              ruleId: v.id,
+              description: v.help || '',
+              impact: v.impact,
+              helpUrl: v.helpUrl || '',
+              pageUrl: url,
+              wcag: v.wcagRefs || [],
+              en301549: v.en301549Refs || [],
+              bitv: v.bitvRefs || [],
+              legalContext: v.legalContext || '',
+              examples,
+            });
           }
         } catch {}
 
         pageResults.push({ url, violations, incomplete });
+        console.log(JSON.stringify({ level: 'info', msg: 'scan-finished', url, durationMs: Date.now() - startT, violations: violations.length }));
 
         const links: string[] = await page.$$eval("a[href]", (els) =>
           (els as HTMLAnchorElement[]).map((a) => (a as any).href as string)
@@ -410,7 +474,7 @@ async function main() {
       await sleep(randInt(WAIT_MIN, WAIT_MAX));
     }
 
-    let downloadsReport: any[] = [];
+    let downloadsReport: DownloadFinding[] = [];
     if (downloads.size) {
       try {
         downloadsReport = await checkDownloads(Array.from(downloads).slice(0, 50));
@@ -419,8 +483,7 @@ async function main() {
       }
     }
 
-    const allViolations = pageResults.flatMap(p => p.violations);
-    const score = computeScore(allViolations);
+    const score = computeScore(issues);
 
     const summary = {
       startUrl: START_URL,
@@ -429,14 +492,14 @@ async function main() {
       downloadsFound: downloads.size,
       score,
       totals: {
-        violations: allViolations.length,
+        violations: issues.length,
         incomplete: pageResults.reduce((a, p) => a + p.incomplete.length, 0)
       }
     };
 
     await fs.writeFile(path.join(OUTPUT_DIR, "scan.json"), JSON.stringify(summary, null, 2), "utf-8");
     await fs.writeFile(path.join(OUTPUT_DIR, "pages.json"), JSON.stringify(Array.from(visited), null, 2), "utf-8");
-    await fs.writeFile(path.join(OUTPUT_DIR, "issues.json"), JSON.stringify(allViolations, null, 2), "utf-8");
+    await fs.writeFile(path.join(OUTPUT_DIR, "issues.json"), JSON.stringify(issues, null, 2), "utf-8");
     await fs.writeFile(path.join(OUTPUT_DIR, "downloads.json"), JSON.stringify(Array.from(downloads), null, 2), "utf-8");
     await fs.writeFile(path.join(OUTPUT_DIR, "downloads_report.json"), JSON.stringify(downloadsReport, null, 2), "utf-8");
   }

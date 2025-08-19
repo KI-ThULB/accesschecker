@@ -16,7 +16,7 @@ type ScanSummary = {
   date: string;
   pagesCrawled: number;
   downloadsFound: number;
-  score: number;
+  score: { overall: number; bySeverity: { critical: number; serious: number; moderate: number; minor: number } };
   totals: { violations: number; incomplete: number };
 };
 
@@ -62,12 +62,12 @@ function vereinbarkeitsStatus(violations: number, score: number) {
   return { label: "nicht vereinbar", level: "red", code: "non" };
 }
 function deriveTopFindings(issues: any[], limit = 8) {
-  const map = new Map<string, { id: string; help: string; wcag: string[]; count: number }>();
+  const map = new Map<string, { id: string; text: string; wcag: string[]; count: number }>();
   for (const v of issues) {
-    const key = v.id || v.help || "unbekannt";
-    const entry = map.get(key) || { id: v.id || key, help: v.help || v.id || "unbekannt", wcag: v.wcagRefs || [], count: 0 };
+    const key = v.ruleId || v.description || "unbekannt";
+    const entry = map.get(key) || { id: v.ruleId || key, text: v.description || key, wcag: v.wcag || [], count: 0 };
     entry.count += 1;
-    if (Array.isArray(v.wcagRefs) && v.wcagRefs.length) entry.wcag = v.wcagRefs;
+    if (Array.isArray(v.wcag) && v.wcag.length) entry.wcag = v.wcag;
     map.set(key, entry);
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
@@ -75,10 +75,10 @@ function deriveTopFindings(issues: any[], limit = 8) {
 
 function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[]) {
   const rows = issues.slice(0, 300).map((v: any) => {
-    const targets = (v.nodes || []).slice(0, 3).map((n: any) => `<code>${escapeHtml((n.target?.[0]||"").toString())}</code>`).join("<br/>");
-    const wcag = (v.wcagRefs || []).join(", "); const bitv = (v.bitvRefs || []).join(", "); const en = (v.en301549Refs || []).join(", ");
+    const targets = (v.examples || []).slice(0, 3).map((n: any) => `<code>${escapeHtml(n.selector)}</code><br/><small>${escapeHtml(n.pageUrl)}</small><br/><small>${escapeHtml(n.context)}</small>`).join("<br/>");
+    const wcag = (v.wcag || []).join(", "); const bitv = (v.bitv || []).join(", "); const en = (v.en301549 || []).join(", ");
     return `<tr>
-      <td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.help||"")}</small></td>
+      <td><b>${escapeHtml(v.ruleId||"")}</b><br/><small>${escapeHtml(v.description||"")}</small></td>
       <td>${escapeHtml(v.impact||"n/a")}</td>
       <td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}<br/>EN: ${escapeHtml(en)}</small></td>
       <td>${targets}</td>
@@ -95,10 +95,11 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
 
   const dlRows = (downloadsReport||[]).map((d: any) => {
     const checks = (d.checks||[]).map((c:any)=>`<li>${escapeHtml(c.name)}: ${c.passed?"✔︎":"✘"}${c.details?` – ${escapeHtml(c.details)}`:""}</li>`).join("");
+    const ok = (d.checks||[]).every((c:any)=>c.passed);
     return `<tr>
       <td><a href="${escapeHtml(d.url)}">${escapeHtml(d.url)}</a></td>
       <td>${escapeHtml(d.__label)}</td>
-      <td>${d.ok?"OK":"<b>Nicht bestanden</b>"}</td>
+      <td>${ok?"OK":"<b>Nicht bestanden</b>"}</td>
       <td><ul>${checks}</ul>${d.note?`<small>${escapeHtml(d.note)}</small>`:""}</td>
     </tr>`;
   }).join("");
@@ -112,8 +113,8 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     <p><b>Geltungsbereich:</b> ${escapeHtml(domainFromUrl(summary.startUrl))}<br/>
        <b>Datum:</b> ${escapeHtml(summary.date)}<br/>
        <b>Seiten:</b> ${summary.pagesCrawled} • <b>Downloads:</b> ${summary.downloadsFound}${typeSummary?` (${escapeHtml(typeSummary)})`:''}</p>
-    <p><b>Gesamt:</b> ${badge(vereinbarkeitsStatus(summary.totals.violations, summary.score).level as any)}
-      &nbsp;Score: ${summary.score}/100 • Verstöße: ${summary.totals.violations} • Warnungen: ${summary.totals.incomplete}
+    <p><b>Gesamt:</b> ${badge(vereinbarkeitsStatus(summary.totals.violations, summary.score.overall).level as any)}
+      &nbsp;Score: ${summary.score.overall}/100 • Verstöße: ${summary.totals.violations} • Warnungen: ${summary.totals.incomplete}
     </p>
 
     <h2>Details (axe-core mit Normbezug)</h2>
@@ -139,7 +140,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
 }
 
 function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile) {
-  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score);
+  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   const top = deriveTopFindings(issues, 8);
   const today = new Date().toISOString().slice(0,10);
 
@@ -152,7 +153,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   };
 
   const topList = top.length
-    ? top.map((v) => `<li>${escapeHtml(plainMap[v.id] || v.help)}${v.wcag.length?` (WCAG: ${escapeHtml(v.wcag.join(', '))})`:''}</li>`).join("")
+    ? top.map((v) => `<li>${escapeHtml(plainMap[v.id] || v.text)}${v.wcag.length?` (WCAG: ${escapeHtml(v.wcag.join(', '))})`:''}</li>`).join("")
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
 
   const manual = (profile.manualFindings || []).map((m) =>
@@ -213,7 +214,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
 function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile) {
-  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score);
+  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   const top = deriveTopFindings(issues, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {
@@ -236,7 +237,7 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "conformanceStatus": status.code, // full | partial | non
       "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
       "method": profile.legal?.method || "automatisierte Selbstbewertung",
-      "topFindings": top.map(t => ({ id: t.id, text: plainMap[t.id] || t.help, wcag: t.wcag }))
+      "topFindings": top.map(t => ({ id: t.id, text: plainMap[t.id] || t.text, wcag: t.wcag }))
     },
     "provider": {
       "name": profile.organisationName || profile.websiteOwner || ""
@@ -263,6 +264,11 @@ async function main() {
   // Profil laden
   let profile: Profile = {};
   try { profile = JSON.parse(await fs.readFile(path.join(process.cwd(), "config", "public_statement.profile.json"), "utf-8")); } catch {}
+  try {
+    const ombuds = JSON.parse(await fs.readFile(path.join(process.cwd(), 'config', 'ombudspersons.json'), 'utf-8'));
+    const key = profile.jurisdiction?.federalState || profile.jurisdiction?.country || 'DE';
+    if (ombuds[key] && !profile.enforcement) profile.enforcement = ombuds[key];
+  } catch {}
 
   // HTML bauen
   const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions);

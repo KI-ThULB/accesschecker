@@ -63,6 +63,7 @@ jobs:
         working-directory: backend
 
       - name: Run crawl-scan (tsx)
+        timeout-minutes: 20
         env:
           START_URL: ${{ github.event.inputs.start_url }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
@@ -73,7 +74,15 @@ jobs:
           CHECK_IFRAMES: ${{ github.event.inputs.check_iframes }}
           CONSENT_CLICK: ${{ github.event.inputs.consent_click }}
           CHECK_DOWNLOADS: ${{ github.event.inputs.check_downloads }}
-        run: npx tsx scripts/crawl-scan.ts
+        run: |
+          n=0
+          until [ "$n" -ge 2 ]
+          do
+            n=$((n+1))
+            npx tsx scripts/crawl-scan.ts && break
+            echo "retrying crawl ($n)"
+            sleep 5
+          done
         working-directory: backend
 
       - name: Render PDF reports
@@ -85,5 +94,7 @@ jobs:
         with:
           name: accesschecker-site-scan
           path: |
-            backend/out/**
-            backend/out/dynamic_interactions.json
+            backend/out/*.json
+            backend/out/report_internal.html
+            backend/out/report_public.html
+            backend/out/report_public.pdf

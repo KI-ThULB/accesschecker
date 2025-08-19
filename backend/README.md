@@ -30,3 +30,21 @@ Ergebnis: HTML + PDF im Ordner `out/`.
 - `scripts/hello-scan.ts` – Einmal-Scanner (Playwright + axe-core)
 - `reports/templates/` – Nunjucks-Templates für Berichte
 - `.github/workflows/` – CI & manuell startbarer Hello-Scan
+
+## Parametrisierung & Beispiele
+
+Der Hauptscanner `crawl-scan.ts` lässt sich über Umgebungsvariablen bzw. Flags steuern. Beispiele:
+
+```bash
+START_URL=https://www.w3.org/WAI/demos/bad/ \
+RESPECT_ROBOTS=true \
+SCAN_IFRAMES=true \
+SIMULATE_BROWSER=true \
+npx tsx scripts/crawl-scan.ts --simulate-browser --scan-iframes --respect-robots
+```
+
+Wichtige Flags:
+
+- `--simulate-browser` – führt Scrollen und Interaktionen (Tabs, Menüs, Accordeons) aus
+- `--scan-iframes` – prüft iframes gleicher Origin
+- `--respect-robots` – beachtet `robots.txt`
