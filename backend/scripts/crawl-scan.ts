@@ -1,3 +1,6 @@
+console.warn("[DEPRECATED] scripts/crawl-scan.ts is obsolete. Use: npm run crawl && npm run scan:engine && npm run build:reports");
+process.exit(2);
+
 /**
  * AccessChecker – erweiterter Site-Crawler + axe-core Scan
  * Abdeckung:

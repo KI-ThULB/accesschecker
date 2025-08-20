@@ -1,0 +1,61 @@
+name: scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Start URL to scan"
+        required: true
+        type: string
+      profile:
+        description: "Scan profile (fast|full)"
+        required: false
+        default: "fast"
+        type: choice
+        options: [fast, full]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Install Playwright (browsers + deps)
+        working-directory: backend
+        run: npx playwright install --with-deps
+
+      - name: Build (TypeScript → dist)
+        working-directory: backend
+        run: npm run build
+
+      - name: Crawl
+        working-directory: backend
+        run: npm run crawl -- --url "${{ inputs.url }}" --max-pages 50 --max-depth 3
+
+      - name: Run modular engine
+        working-directory: backend
+        run: npm run scan:engine -- --url "${{ inputs.url }}" --profile "${{ inputs.profile }}"
+
+      - name: Build reports (HTML/PDF)
+        working-directory: backend
+        run: npm run build:reports
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: accesschecker-out
+          path: |
+            backend/out/**
