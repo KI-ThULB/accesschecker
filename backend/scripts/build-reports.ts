@@ -271,9 +271,18 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
 
 export async function main() {
   const outDir = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
-  const summary: ScanSummary = JSON.parse(await fs.readFile(path.join(outDir, "scan.json"), "utf-8"));
-  const issues: any[] = JSON.parse(await fs.readFile(path.join(outDir, "issues.json"), "utf-8"));
-  let downloadsReport: any[] = []; try { downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, "downloads_report.json"), "utf-8")); } catch {}
+  const results = JSON.parse(await fs.readFile(path.join(outDir, "results.json"), "utf-8"));
+  const summary: ScanSummary = {
+    startUrl: results.meta?.target || '',
+    date: results.meta?.finishedAt || '',
+    pagesCrawled: results.pages?.length || 0,
+    downloadsFound: results.downloads?.length || 0,
+    score: results.score || { overall: 0, bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 } },
+    totals: { violations: results.issues?.length || 0, incomplete: 0 },
+    jurisdiction: results.meta?.jurisdiction
+  };
+  const issues: any[] = results.issues || [];
+  let downloadsReport: any[] = results.downloads || [];
   let dynamicInteractions: any[] = []; try { dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "dynamic_interactions.json"), "utf-8")); } catch {}
 
   // Profil laden

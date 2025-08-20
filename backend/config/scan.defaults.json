@@ -1,16 +1,23 @@
 {
-  "sameOriginOnly": true,
-  "respectRobotsTxt": true,
-  "seedSitemap": true,
-  "respectHashRoutes": true,
-  "checkIframes": true,
-  "consentClick": true,
-  "maxPages": 50,
-  "maxDepth": 3,
-  "timeoutMs": 45000,
-  "waitAfterLoadMs": 600,
-  "waitMinMs": 200,
-  "waitMaxMs": 600,
-  "userAgent": "AccessCheckerBot/0.2 (+https://example.invalid)",
-  "jurisdiction": "DE-TH"
+  "profile": "fast",
+  "modules": {
+    "dom-aria": true,
+    "forms": true,
+    "downloads": true,
+    "pdf": true,
+    "office": true,
+    "csv-txt": true
+  },
+  "profiles": {
+    "fast": ["dom-aria","forms","downloads","pdf","office","csv-txt"],
+    "full": ["*"]
+  },
+  "maxPages": 100,
+  "maxDepth": 5,
+  "rateLimit": 4,
+  "concurrency": 3,
+  "simulateBrowser": true,
+  "scanIframes": "same-origin",
+  "viewport": "1366x900",
+  "downloadMaxSizeMB": 25
 }

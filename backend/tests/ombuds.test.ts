@@ -33,18 +33,15 @@ test('report build produces enforcement block and hint', async (t) => {
   const outDir = path.join(tmp, 'out');
   await fs.mkdir(outDir, { recursive: true });
   const now = new Date().toISOString();
-  const summary = {
-    startUrl: 'https://example.org',
-    date: now,
-    pagesCrawled: 0,
-    downloadsFound: 0,
+  const results = {
+    meta: { startedAt: now, finishedAt: now, target: 'https://example.org', profile: 'fast', jurisdiction: 'DE-TH' },
     score: { overall: 100, bySeverity: { critical:0, serious:0, moderate:0, minor:0 } },
-    totals: { violations:0, incomplete:0 },
-    jurisdiction: 'DE-TH'
+    modules: {},
+    issues: [],
+    pages: [],
+    downloads: []
   };
-  await fs.writeFile(path.join(outDir, 'scan.json'), JSON.stringify(summary));
-  await fs.writeFile(path.join(outDir, 'issues.json'), '[]');
-  await fs.writeFile(path.join(outDir, 'downloads_report.json'), '[]');
+  await fs.writeFile(path.join(outDir, 'results.json'), JSON.stringify(results));
   await fs.writeFile(path.join(outDir, 'dynamic_interactions.json'), '[]');
 
   const cfgDir = path.join(tmp, 'config');

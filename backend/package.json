@@ -3,10 +3,11 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "crawl-scan": "tsx scripts/crawl-scan.ts",
+    "crawl": "tsx scripts/crawl-scan.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "render-reports": "tsx scripts/build-reports.ts",
+    "build:reports": "tsx scripts/build-reports.ts",
+    "scan:engine": "node --enable-source-maps dist/core/engine.js --url $URL --profile $PROFILE",
     "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
