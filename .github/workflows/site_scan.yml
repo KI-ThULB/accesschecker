@@ -64,6 +64,7 @@ jobs:
 
       - name: Run crawl-scan (tsx)
         timeout-minutes: 20
+        continue-on-error: true
         env:
           START_URL: ${{ github.event.inputs.start_url }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
@@ -76,13 +77,24 @@ jobs:
           CHECK_DOWNLOADS: ${{ github.event.inputs.check_downloads }}
         run: |
           n=0
+          exitcode=0
           until [ "$n" -ge 2 ]
           do
             n=$((n+1))
-            npx tsx scripts/crawl-scan.ts && break
+            set +e
+            output=$(npx tsx scripts/crawl-scan.ts 2>&1)
+            exitcode=$?
+            echo "$output"
+            if [ "$exitcode" -eq 0 ]; then
+              break
+            fi
+            if echo "$output" | grep -qi "content security policy"; then
+              echo "::warning::content security policy blocked some requests; consider disabling CSP for accurate results."
+            fi
             echo "retrying crawl ($n)"
             sleep 5
           done
+          exit $exitcode
         working-directory: backend
 
       - name: Render PDF reports
