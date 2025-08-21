@@ -142,7 +142,10 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
 }
 
 function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
-  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
+  let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
+  if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
+    status = { ...status, code: "unknown" };
+  }
   const top = deriveTopFindings(issues, 8);
   const today = new Date().toISOString().slice(0,10);
 
@@ -219,7 +222,10 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
 function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
-  const status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
+  let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
+  if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
+    status = { ...status, code: "unknown" };
+  }
   const top = deriveTopFindings(issues, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {

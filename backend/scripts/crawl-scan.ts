@@ -379,19 +379,17 @@ async function main() {
         const incomplete: any[] = (res.incomplete || []) as any[];
 
         try {
-          const mapArr: any[] = JSON.parse(
+          const byId: Record<string, any> = JSON.parse(
             await fs.readFile(new URL("../config/rules_mapping.json", import.meta.url), "utf-8")
           );
-          const byId: Record<string, any> = {};
-          for (const m of mapArr) byId[m.axeRuleId] = m;
           for (const v of violations) {
-            const m = byId[v.id];
+            const m = byId[v.id] || {};
             if (m) {
               v.wcagRefs = m.wcag || [];
               v.bitvRefs = m.bitv || [];
               v.en301549Refs = m.en301549 || [];
               v.legalContext = m.legalContext || "";
-              if (!v.impact && m.impactDefault) v.impact = m.impactDefault;
+              if (!v.impact && m.severity) v.impact = m.severity;
             }
             const examples = (v.nodes || []).slice(0, 3).map(n => ({
               selector: n.target?.[0] || '',
