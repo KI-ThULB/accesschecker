@@ -9,9 +9,21 @@ export function register(mod: Module) {
   registered.set(mod.slug, mod);
 }
 
+async function detectModulesDir(): Promise<string> {
+  // Prefer compiled modules when running from dist
+  const distDir = path.join(process.cwd(), 'dist', 'modules');
+  try {
+    const s = await fs.stat(distDir);
+    if (s.isDirectory()) return distDir;
+  } catch {}
+  // Fallback to source modules
+  return path.join(process.cwd(), 'modules');
+}
+
 async function loadModule(slug: string): Promise<Module> {
   if (registered.has(slug)) return registered.get(slug)!;
-  const modulesDir = path.join(process.cwd(), 'modules');
+  const modulesDir = await detectModulesDir();
+  // When running from source via tsx, files are .ts; from dist they are .js
   const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
   const modPath = pathToFileURL(path.join(modulesDir, slug, `index${ext}`)).href;
   const mod: Module = (await import(modPath)).default;
@@ -31,7 +43,7 @@ export async function getModules(enabled: string[] = [], profile: string, config
     list = enabled;
   }
   if (list.includes('*')) {
-    const modulesDir = path.join(process.cwd(), 'modules');
+    const modulesDir = await detectModulesDir();
     list = await fs.readdir(modulesDir);
   }
   const mods: Module[] = [];
