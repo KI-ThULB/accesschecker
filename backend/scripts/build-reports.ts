@@ -93,18 +93,19 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     d.__label = label;
     typeCounts[label] = (typeCounts[label] || 0) + 1;
   }
-  const typeSummary = Object.entries(typeCounts).map(([t,c])=>`${t}: ${c}`).join(', ');
+  const typeSummary = Object.entries(typeCounts).map(([t, c]) => `${t}: ${c}`).join(', ');
 
-  const dlRows = (downloadsReport||[]).map((d: any) => {
-    const checks = (d.checks||[]).map((c:any)=>`<li>${escapeHtml(c.name)}: ${c.passed?"✔︎":"✘"}${c.details?` – ${escapeHtml(c.details)}`:""}</li>`).join("");
-    const ok = (d.checks||[]).every((c:any)=>c.passed);
+  const dlRows = (downloadsReport || []).map((d: any) => {
+    const status = d.status === 'skipped' ? 'Übersprungen' : (d.checks && d.checks.length ? 'Fehler' : 'OK');
+    const checks = (d.checks || []).join(', ');
+    const name = d.filename || d.url;
     return `<tr>
-      <td><a href="${escapeHtml(d.url)}">${escapeHtml(d.url)}</a></td>
+      <td><a href="${escapeHtml(d.url)}">${escapeHtml(name)}</a></td>
       <td>${escapeHtml(d.__label)}</td>
-      <td>${ok?"OK":"<b>Nicht bestanden</b>"}</td>
-      <td><ul>${checks}</ul>${d.note?`<small>${escapeHtml(d.note)}</small>`:""}</td>
+      <td>${escapeHtml(status)}</td>
+      <td>${escapeHtml(checks)}</td>
     </tr>`;
-  }).join("");
+  }).join('');
 
   return `<!doctype html><html lang="de"><head>
     <meta charset="utf-8"/>
@@ -148,6 +149,8 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   }
   const formIssues = issues.filter((v: any) => (v.id || '').startsWith('forms:'));
   const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(issues, 8);
+  const dlIssues = issues.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
+  const dlTop = deriveTopFindings(dlIssues, 3);
   const today = new Date().toISOString().slice(0,10);
 
   const plainMap: Record<string, string> = {
@@ -161,7 +164,15 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "forms:error-not-associated": "Fehlermeldung nicht mit Feld verknüpft",
     "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
     "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
-    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch"
+    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch",
+    "pdf:untagged": "PDF ohne Tags",
+    "pdf:missing-lang": "PDF ohne Sprache",
+    "pdf:missing-title": "PDF ohne Titel",
+    "office:missing-core-properties": "Office-Dokument ohne Metadaten",
+    "office:alttext-review": "Office-Bilder: Alt-Texte prüfen",
+    "csv:encoding": "Datei nicht UTF-8 kodiert",
+    "csv:line-endings": "Uneinheitliche Zeilenenden",
+    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
   };
 
   const topList = top.length
@@ -220,8 +231,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     ${enforcementDataStatus === 'incomplete' ? `<p>Die Kontaktdaten der zuständigen Durchsetzungsstelle werden kurzfristig ergänzt. Bis dahin wenden Sie sich bitte an die bundesweite Schlichtungsstelle.</p>` : ''}
 
     <h2>6. Hinweise zu Dokumenten/Downloads</h2>
-    <p>Prüfbare Dateien insgesamt: <b>${downloadsReport?.length || 0}</b>.
-       Legacy-Formate (DOC/PPT) werden als nicht automatisch prüfbar gekennzeichnet und sukzessive ersetzt.</p>
+    <p>Prüfbare Dateien insgesamt: <b>${downloadsReport?.length || 0}</b>.</p>
+    ${dlTop.length ? `<p>Häufige Probleme:</p><ul>${dlTop.map(v => `<li>${escapeHtml(plainMap[v.id] || v.text)}</li>`).join('')}</ul>` : ''}
+    <p><small>Legacy-Formate (DOC/PPT) werden als nicht automatisch prüfbar gekennzeichnet und sukzessive ersetzt.</small></p>
 
     <p><small>Diese Erklärung wird regelmäßig aktualisiert.</small></p>
   </body></html>`;
@@ -247,7 +259,15 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
     "forms:error-not-associated": "Fehlermeldung nicht mit Feld verknüpft",
     "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
     "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
-    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch"
+    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch",
+    "pdf:untagged": "PDF ohne Tags",
+    "pdf:missing-lang": "PDF ohne Sprache",
+    "pdf:missing-title": "PDF ohne Titel",
+    "office:missing-core-properties": "Office-Dokument ohne Metadaten",
+    "office:alttext-review": "Office-Bilder: Alt-Texte prüfen",
+    "csv:encoding": "Datei nicht UTF-8 kodiert",
+    "csv:line-endings": "Uneinheitliche Zeilenenden",
+    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
   };
 
   return {
@@ -292,17 +312,21 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
 export async function main() {
   const outDir = process.env.OUTPUT_DIR || path.join(process.cwd(), "out");
   const results = JSON.parse(await fs.readFile(path.join(outDir, "results.json"), "utf-8"));
+  let downloadsReport: any[] = [];
+  try {
+    const idx = results.modules?.downloads?.artifacts?.index || 'downloads_index.json';
+    downloadsReport = JSON.parse(await fs.readFile(path.join(outDir, path.basename(idx)), 'utf-8'));
+  } catch {}
   const summary: ScanSummary = {
     startUrl: results.meta?.target || '',
     date: results.meta?.finishedAt || '',
     pagesCrawled: results.pages?.length || 0,
-    downloadsFound: results.downloads?.length || 0,
+    downloadsFound: downloadsReport.length,
     score: results.score || { overall: 0, bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 } },
     totals: { violations: results.issues?.length || 0, incomplete: 0 },
     jurisdiction: results.meta?.jurisdiction
   };
   const issues: any[] = results.issues || [];
-  let downloadsReport: any[] = results.downloads || [];
   let dynamicInteractions: any[] = [];
   try {
     dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "keyboard_trace.json"), "utf-8"));

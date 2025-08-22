@@ -4,13 +4,10 @@
     "dom-aria": true,
     "keyboard-focus": true,
     "forms": true,
-    "downloads": true,
-    "pdf": true,
-    "office": true,
-    "csv-txt": true
+    "downloads": true
   },
   "profiles": {
-    "fast": ["dom-aria","keyboard-focus","forms","downloads","pdf","office","csv-txt"],
+    "fast": ["dom-aria","keyboard-focus","forms","downloads"],
     "full": ["*"]
   },
   "maxPages": 100,
