@@ -146,7 +146,8 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const top = deriveTopFindings(issues, 8);
+  const formIssues = issues.filter((v: any) => (v.id || '').startsWith('forms:'));
+  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(issues, 8);
   const today = new Date().toISOString().slice(0,10);
 
   const plainMap: Record<string, string> = {
@@ -154,7 +155,13 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "image-alt": "Bilder ohne Alternativtext",
     "color-contrast": "Texte haben zu wenig Farbkontrast",
     "html-has-lang": "Seite nennt keine Sprache",
-    "document-title": "Seite hat keinen Titel"
+    "document-title": "Seite hat keinen Titel",
+    "forms:missing-label": "Formularfeld ohne Beschriftung",
+    "forms:multiple-labels": "Formularfeld mit mehreren Beschriftungen",
+    "forms:error-not-associated": "Fehlermeldung nicht mit Feld verknüpft",
+    "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
+    "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
+    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch"
   };
 
   const topList = top.length
@@ -226,14 +233,21 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const top = deriveTopFindings(issues, 8);
+  const formIssues = issues.filter((v: any) => (v.id || '').startsWith('forms:'));
+  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(issues, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {
     "link-name": "Links haben kein erkennbares Ziel",
     "image-alt": "Bilder ohne Alternativtext",
     "color-contrast": "Texte haben zu wenig Farbkontrast",
     "html-has-lang": "Seite nennt keine Sprache",
-    "document-title": "Seite hat keinen Titel"
+    "document-title": "Seite hat keinen Titel",
+    "forms:missing-label": "Formularfeld ohne Beschriftung",
+    "forms:multiple-labels": "Formularfeld mit mehreren Beschriftungen",
+    "forms:error-not-associated": "Fehlermeldung nicht mit Feld verknüpft",
+    "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
+    "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
+    "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch"
   };
 
   return {
