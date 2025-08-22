@@ -75,8 +75,10 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[]) {
-  const rows = issues.slice(0, 300).map((v: any) => {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any) {
+  const regular = issues.filter((v: any) => v.module !== 'semantics-landmarks');
+  const lmIssues = issues.filter((v: any) => v.module === 'semantics-landmarks');
+  const rows = regular.slice(0, 300).map((v: any) => {
     const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join("<br/>");
     const wcag = (v.norms?.wcag || []).join(", "); const bitv = (v.norms?.bitv || []).join(", "); const en = (v.norms?.en301549 || []).join(", ");
     return `<tr>
@@ -86,6 +88,12 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <td>${targets}</td>
     </tr>`;
   }).join("");
+
+  const lmRows = lmIssues.map((v: any) => {
+    const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join("<br/>");
+    const wcag = (v.norms?.wcag || []).join(", ");
+    return `<tr><td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.summary||"")}</small></td><td>${escapeHtml(v.severity||"n/a")}</td><td><small>WCAG: ${escapeHtml(wcag)}</small></td><td>${targets}</td></tr>`;
+  }).join('');
 
   const typeCounts: Record<string, number> = {};
   for (const d of downloadsReport || []) {
@@ -126,6 +134,8 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${rows || '<tr><td colspan="4"><small>Keine Verstöße ermittelt.</small></td></tr>'}</tbody>
     </table>
 
+    ${landmarks ? `<h2>Struktur &amp; Landmarken</h2><p>Abdeckung: ${escapeHtml(String(landmarks.metrics?.coverage || 0))}%</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+
     <h2>Prüfung von Downloads</h2>
     <table>
       <thead><tr><th>Datei</th><th>Typ</th><th>Status</th><th>Checks</th></tr></thead>
@@ -142,14 +152,15 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const formIssues = issues.filter((v: any) => (v.id || '').startsWith('forms:'));
-  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(issues, 8);
-  const dlIssues = issues.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
+  const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
+  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
   const dlTop = deriveTopFindings(dlIssues, 3);
   const today = new Date().toISOString().slice(0,10);
 
@@ -175,9 +186,17 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
   };
 
-  const topList = top.length
+  const topListBase = top.length
     ? top.map((v) => `<li>${escapeHtml(plainMap[v.id] || v.text)}${v.wcag.length?` (WCAG: ${escapeHtml(v.wcag.join(', '))})`:''}</li>`).join("")
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
+
+  let landmarkBullet = '';
+  if (landmarks && (landmarks.findings || []).length) {
+    const cov = Math.round(landmarks.metrics?.coverage || 0);
+    const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
+    landmarkBullet = `<li>${escapeHtml(`Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`)}</li>`;
+  }
+  const topList = landmarkBullet + topListBase;
 
   const manual = (profile.manualFindings || []).map((m) =>
     `<li><b>${escapeHtml(m.title)}</b>${m.reason?` – <i>${escapeHtml(m.reason)}</i>`:""}${m.description?`<br/><small>${escapeHtml(m.description)}</small>`:""}</li>`
@@ -240,13 +259,14 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const formIssues = issues.filter((v: any) => (v.id || '').startsWith('forms:'));
-  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(issues, 8);
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
+  const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
+  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {
     "link-name": "Links haben kein erkennbares Ziel",
@@ -282,7 +302,15 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "conformanceStatus": status.code, // full | partial | non
       "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
       "method": profile.legal?.method || "automatisierte Selbstbewertung",
-      "topFindings": top.map(t => ({ id: t.id, text: plainMap[t.id] || t.text, wcag: t.wcag }))
+      "topFindings": (() => {
+        const arr = top.map(t => ({ id: t.id, text: plainMap[t.id] || t.text, wcag: t.wcag }));
+        if (landmarks && (landmarks.findings || []).length) {
+          const cov = Math.round(landmarks.metrics?.coverage || 0);
+          const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
+          arr.unshift({ id: 'landmarks:summary', text: `Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`, wcag: ['1.3.1'] });
+        }
+        return arr;
+      })()
     },
     "provider": {
       "name": profile.organisationName || profile.websiteOwner || ""
@@ -347,16 +375,17 @@ export async function main() {
   const hasTodo = ['website','email','phone','postalAddress'].some((k) => (authority as any)[k]?.includes('TODO'));
   if (hasTodo) enforcementDataStatus = 'incomplete';
 
+  const landmarks = results.modules?.['semantics-landmarks'];
   // HTML bauen
-  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions);
-  const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus);
+  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, landmarks);
+  const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, landmarks);
 
   // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-  const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus);
+  const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, landmarks);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken

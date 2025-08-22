@@ -4,10 +4,11 @@
     "dom-aria": true,
     "keyboard-focus": true,
     "forms": true,
-    "downloads": true
+    "downloads": true,
+    "semantics-landmarks": true
   },
   "profiles": {
-    "fast": ["dom-aria","keyboard-focus","forms","downloads"],
+    "fast": ["dom-aria","keyboard-focus","forms","downloads","semantics-landmarks"],
     "full": ["*"]
   },
   "maxPages": 100,
