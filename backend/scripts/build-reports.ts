@@ -66,10 +66,10 @@ function vereinbarkeitsStatus(violations: number, score: number) {
 function deriveTopFindings(issues: any[], limit = 8) {
   const map = new Map<string, { id: string; text: string; wcag: string[]; count: number }>();
   for (const v of issues) {
-    const key = v.ruleId || v.description || "unbekannt";
-    const entry = map.get(key) || { id: v.ruleId || key, text: v.description || key, wcag: v.wcag || [], count: 0 };
+    const key = v.id || v.summary || 'unbekannt';
+    const entry = map.get(key) || { id: v.id || key, text: v.summary || key, wcag: v.norms?.wcag || [], count: 0 };
     entry.count += 1;
-    if (Array.isArray(v.wcag) && v.wcag.length) entry.wcag = v.wcag;
+    if (Array.isArray(v.norms?.wcag) && v.norms.wcag.length) entry.wcag = v.norms.wcag;
     map.set(key, entry);
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
@@ -77,11 +77,11 @@ function deriveTopFindings(issues: any[], limit = 8) {
 
 function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[]) {
   const rows = issues.slice(0, 300).map((v: any) => {
-    const targets = (v.examples || []).slice(0, 3).map((n: any) => `<code>${escapeHtml(n.selector)}</code><br/><small>${escapeHtml(n.pageUrl)}</small><br/><small>${escapeHtml(n.context)}</small>`).join("<br/>");
-    const wcag = (v.wcag || []).join(", "); const bitv = (v.bitv || []).join(", "); const en = (v.en301549 || []).join(", ");
+    const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join("<br/>");
+    const wcag = (v.norms?.wcag || []).join(", "); const bitv = (v.norms?.bitv || []).join(", "); const en = (v.norms?.en301549 || []).join(", ");
     return `<tr>
-      <td><b>${escapeHtml(v.ruleId||"")}</b><br/><small>${escapeHtml(v.description||"")}</small></td>
-      <td>${escapeHtml(v.impact||"n/a")}</td>
+      <td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.summary||"")}</small></td>
+      <td>${escapeHtml(v.severity||"n/a")}</td>
       <td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}<br/>EN: ${escapeHtml(en)}</small></td>
       <td>${targets}</td>
     </tr>`;
