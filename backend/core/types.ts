@@ -30,6 +30,7 @@ export interface ModuleResult {
   findings: Finding[];
   warnings?: string[];
   stats?: Record<string, number>;
+  metrics?: Record<string, number>;
   artifacts?: Record<string, string>;
 }
 

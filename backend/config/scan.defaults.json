@@ -2,12 +2,12 @@
   "profile": "fast",
   "modules": {
     "dom-aria": true,
-    "keyboard-focus": true,
+    "keyboard-visibility": true,
     "forms": true,
     "downloads": true
   },
   "profiles": {
-    "fast": ["dom-aria","keyboard-focus","forms","downloads"],
+    "fast": ["dom-aria","keyboard-visibility","forms","downloads"],
     "full": ["*"]
   },
   "maxPages": 100,

@@ -75,7 +75,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[]) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], keyboard?: any) {
   const rows = issues.slice(0, 300).map((v: any) => {
     const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join("<br/>");
     const wcag = (v.norms?.wcag || []).join(", "); const bitv = (v.norms?.bitv || []).join(", "); const en = (v.norms?.en301549 || []).join(", ");
@@ -107,6 +107,20 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     </tr>`;
   }).join('');
 
+  const kRows = (keyboard?.findings || [])
+    .filter((f: any) => f.id && f.id.startsWith('keyboard:'))
+    .map((f: any) => {
+      const extra = (f.extra || {}) as any;
+      const shot = extra.screenshot ? `<a href="${escapeHtml(extra.screenshot)}">Bild</a>` : '';
+      return `<tr>
+        <td>${escapeHtml((f.selectors || [])[0] || '')}</td>
+        <td>${escapeHtml(f.id)}</td>
+        <td>${extra.contrast ? extra.contrast.toFixed ? extra.contrast.toFixed(2) : extra.contrast : ''}</td>
+        <td>${extra.areaRatio ? extra.areaRatio.toFixed ? extra.areaRatio.toFixed(3) : extra.areaRatio : ''}</td>
+        <td>${shot}</td>
+      </tr>`;
+    }).join('');
+
   return `<!doctype html><html lang="de"><head>
     <meta charset="utf-8"/>
     <title>Interner Barrierefreiheitsbericht</title>
@@ -130,6 +144,12 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     <table>
       <thead><tr><th>Datei</th><th>Typ</th><th>Status</th><th>Checks</th></tr></thead>
       <tbody>${dlRows || '<tr><td colspan="4"><small>Keine prüfbaren Downloads.</small></td></tr>'}</tbody>
+    </table>
+
+    <h2>Tastatur &amp; Fokus</h2>
+    <table>
+      <thead><tr><th>Element</th><th>Regel</th><th>Contrast</th><th>AreaRatio</th><th>Screenshot</th></tr></thead>
+      <tbody>${kRows || '<tr><td colspan="5"><small>Keine Probleme festgestellt.</small></td></tr>'}</tbody>
     </table>
 
     <h2>Dynamische Interaktionen</h2>
@@ -172,7 +192,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "office:alttext-review": "Office-Bilder: Alt-Texte prüfen",
     "csv:encoding": "Datei nicht UTF-8 kodiert",
     "csv:line-endings": "Uneinheitliche Zeilenenden",
-    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
+    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen",
+    "keyboard:focus-indicator-weak": "Fokus-Indikator unzureichend",
+    "keyboard:outline-suppressed": "Fokus-Indikator unterdrückt"
   };
 
   const topList = top.length
@@ -331,6 +353,7 @@ export async function main() {
   try {
     dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "keyboard_trace.json"), "utf-8"));
   } catch {}
+  const keyboardMod = results.modules?.['keyboard-visibility'];
 
   // Profil laden
   let profile: Profile = {};
@@ -348,7 +371,7 @@ export async function main() {
   if (hasTodo) enforcementDataStatus = 'incomplete';
 
   // HTML bauen
-  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions);
+  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, keyboardMod);
   const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus);
 
   // HTML speichern
