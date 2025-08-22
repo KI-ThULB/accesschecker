@@ -289,7 +289,10 @@ export async function main() {
   };
   const issues: any[] = results.issues || [];
   let downloadsReport: any[] = results.downloads || [];
-  let dynamicInteractions: any[] = []; try { dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "dynamic_interactions.json"), "utf-8")); } catch {}
+  let dynamicInteractions: any[] = [];
+  try {
+    dynamicInteractions = JSON.parse(await fs.readFile(path.join(outDir, "keyboard_trace.json"), "utf-8"));
+  } catch {}
 
   // Profil laden
   let profile: Profile = {};
