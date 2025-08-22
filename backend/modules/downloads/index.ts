@@ -67,7 +67,8 @@ const mod: Module = {
         const head = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
         clearTimeout(timeout);
         if (!head.ok) throw new Error(`HTTP ${head.status}`);
-        const maxBytes = (ctx.config.downloadMaxSizeMB || MAX_SIZE_MB) * 1024 * 1024;
+        const maxMb = Number(ctx.config.downloadMaxSizeMB) || MAX_SIZE_MB;
+        const maxBytes = maxMb * 1024 * 1024;
         const len = Number(head.headers.get('content-length') || '0');
         const contentType = head.headers.get('content-type') || '';
         if (len && len > maxBytes) {
