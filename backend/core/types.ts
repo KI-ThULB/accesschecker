@@ -16,7 +16,7 @@ export interface Finding {
   selectors?: string[];
   pageUrl: string;
   norms?: NormRefs;
-  metrics?: Record<string, string | number>;
+  metrics?: Record<string, number | string>;
 }
 
 export interface Issue extends Finding {}

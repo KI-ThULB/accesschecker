@@ -1,4 +1,4 @@
-import { Module, Finding } from '../../core/types.js';
+import type { Module, Finding } from '../../core/types.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 

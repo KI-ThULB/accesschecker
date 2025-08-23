@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { getModules } from './registry.js';
-import { ModuleContext, ModuleResult, ScanResults, Issue, DownloadFinding } from './types.js';
+import type { ModuleContext, ModuleResult, ScanResults, Issue, DownloadFinding } from './types.js';
 
 export async function main() {
   const config = await loadConfig();

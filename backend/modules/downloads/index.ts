@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { Module, DownloadFinding, Severity, NormRefs } from '../../core/types.js';
+import type { Module, DownloadFinding, Severity, NormRefs } from '../../core/types.js';
 import { analyzePdf, analyzeOffice, analyzeCsvTxt } from '../../scanners/downloads.js';
 
 const VERSION = '0.2.0';

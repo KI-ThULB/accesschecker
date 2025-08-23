@@ -1,4 +1,4 @@
-import { Module, Severity, Finding, NormRefs } from '../../core/types.js';
+import type { Module, Severity, Finding, NormRefs } from '../../core/types.js';
 import rulesMapping from '../../config/rules_mapping.json' assert { type: 'json' };
 import { collectFormControls } from '../../src/a11y/forms.js';
 
