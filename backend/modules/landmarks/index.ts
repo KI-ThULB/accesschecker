@@ -1,14 +1,5 @@
 import { Module, Finding } from '../../core/types.js';
 
-export type LandmarkFinding = {
-  id: string;
-  severity: 'minor' | 'moderate' | 'serious';
-  summary: string;
-  details?: string;
-  selectors?: string[];
-  metrics?: Record<string, number | string>;
-};
-
 export type RemediationHint = {
   title: string;
   snippet: string;
@@ -101,7 +92,7 @@ const mod: Module = {
       metrics: { coveragePercent: data.coveragePercent, badge: coverageBadge(data.coveragePercent) },
       pageUrl: ctx.url,
       norms,
-    } as any);
+    });
 
     if (data.counts.main === 0) {
       findings.push({ id: 'landmarks:missing-main', module: 'landmarks', severity: 'moderate', summary: 'Fehlendes <main>-Element', details: '', pageUrl: ctx.url, norms });
