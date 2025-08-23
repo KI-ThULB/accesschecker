@@ -75,7 +75,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any, headings?: any) {
   const regular = issues.filter((v: any) => v.module !== 'semantics-landmarks');
   const lmIssues = issues.filter((v: any) => v.module === 'semantics-landmarks');
   const rows = regular.slice(0, 300).map((v: any) => {
@@ -94,6 +94,13 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     const wcag = (v.norms?.wcag || []).join(", ");
     return `<tr><td><b>${escapeHtml(v.id||"")}</b><br/><small>${escapeHtml(v.summary||"")}</small></td><td>${escapeHtml(v.severity||"n/a")}</td><td><small>WCAG: ${escapeHtml(wcag)}</small></td><td>${targets}</td></tr>`;
   }).join('');
+  const headRows = headings ? (headings.findings || []).map((v: any) => {
+    const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join('<br/>');
+    const wcag = (v.norms?.wcag || []).join(', ');
+    const bitv = (v.norms?.bitv || []).join(', ');
+    return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'n/a')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
+  }).join('') : '';
+
 
   const typeCounts: Record<string, number> = {};
   for (const d of downloadsReport || []) {
@@ -135,6 +142,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     </table>
 
     ${landmarks ? `<h2>Struktur &amp; Landmarken</h2><p>Abdeckung: ${escapeHtml(String(landmarks.metrics?.coverage || 0))}%</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
 
     <h2>Prüfung von Downloads</h2>
     <table>
@@ -152,12 +160,12 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks' && v.module !== 'headings-outline');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
@@ -202,7 +210,11 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
     landmarkBullet = `<li>${escapeHtml(`Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`)}</li>`;
   }
-  const topList = landmarkBullet + topListBase;
+  let headingsBullet = '';
+  if (headings && (headings.findings || []).length) {
+    headingsBullet = `<li>${escapeHtml('Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)')} – ${headings.findings.length}</li>`;
+  }
+  const topList = landmarkBullet + headingsBullet + topListBase;
 
   const manual = (profile.manualFindings || []).map((m) =>
     `<li><b>${escapeHtml(m.title)}</b>${m.reason?` – <i>${escapeHtml(m.reason)}</i>`:""}${m.description?`<br/><small>${escapeHtml(m.description)}</small>`:""}</li>`
@@ -265,12 +277,12 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks' && v.module !== 'headings-outline');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
@@ -320,6 +332,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
           const cov = Math.round(landmarks.metrics?.coverage || 0);
           const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
           arr.unshift({ id: 'landmarks:summary', text: `Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`, wcag: ['1.3.1'], count: (landmarks.findings || []).length || 1 });
+        }
+        if (headings && (headings.findings || []).length) {
+          arr.unshift({ id: 'headings:summary', text: 'Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)', wcag: ['1.3.1','2.4.6'], count: headings.findings.length });
         }
         return arr;
       })()
@@ -387,17 +402,22 @@ export async function main() {
   const hasTodo = ['website','email','phone','postalAddress'].some((k) => (authority as any)[k]?.includes('TODO'));
   if (hasTodo) enforcementDataStatus = 'incomplete';
 
-  const landmarks = results.modules?.['semantics-landmarks'];
-  // HTML bauen
-  const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, landmarks);
-  const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, landmarks);
+    const landmarks = results.modules?.['semantics-landmarks'];
+    const headings = results.modules?.['headings-outline'];
+    const headingPenalty = (publicConfig?.scoreHooks?.['headings-outline'] || 0);
+    if (headings && headingPenalty) {
+      summary.score.overall = Math.max(0, summary.score.overall - headingPenalty * (headings.findings?.length || 0));
+    }
+    // HTML bauen
+    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, landmarks, headings);
+    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, landmarks, headings);
 
-  // HTML speichern
+    // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-  const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, landmarks);
+  const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, landmarks, headings);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken

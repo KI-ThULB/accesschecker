@@ -5,11 +5,21 @@
     "keyboard-visibility": true,
     "forms": true,
     "downloads": true,
-    "semantics-landmarks": true
+    "semantics-landmarks": true,
+    "headings-outline": true
   },
   "profiles": {
-    "fast": ["dom-aria","keyboard-visibility","forms","downloads","semantics-landmarks"],
-    "full": ["*"]
+    "fast": [
+      "dom-aria",
+      "keyboard-visibility",
+      "forms",
+      "downloads",
+      "semantics-landmarks",
+      "headings-outline"
+    ],
+    "full": [
+      "*"
+    ]
   },
   "maxPages": 100,
   "maxDepth": 5,
@@ -18,5 +28,8 @@
   "simulateBrowser": true,
   "scanIframes": "same-origin",
   "viewport": "1366x900",
-  "downloadMaxSizeMB": 25
+  "downloadMaxSizeMB": 25,
+  "scoreHooks": {
+    "headings-outline": 1
+  }
 }

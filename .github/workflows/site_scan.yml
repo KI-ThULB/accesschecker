@@ -114,3 +114,4 @@ jobs:
             backend/out/report_internal.html
             backend/out/report_public.html
             backend/out/report_public.pdf
+            backend/out/headings_outline.json

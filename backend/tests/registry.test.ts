@@ -9,6 +9,7 @@ test('getModules loads modules from profile', async () => {
   const slugs = mods.map(m => m.slug);
   assert.ok(slugs.includes('dom-aria'));
   assert.ok(slugs.includes('forms'));
+  assert.ok(slugs.includes('headings-outline'));
 });
 
 test('getModules wildcard', async () => {
