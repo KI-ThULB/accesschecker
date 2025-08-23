@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:reports": "tsx scripts/build-reports.ts",
     "scan:engine": "node --enable-source-maps dist/core/engine.js --url $URL --profile $PROFILE",
+    "scan:landmarks": "node --enable-source-maps dist/core/engine.js --modules landmarks",
     "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
