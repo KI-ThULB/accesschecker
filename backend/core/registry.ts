@@ -36,9 +36,14 @@ export async function getModules(enabled: string[] = [], profile: string, config
   if (enabled.length === 0) {
     const prof = config.profiles?.[profile];
     if (prof && prof.length) list = prof;
-    else {
-      list = Object.keys(config.modules).filter((m) => config.modules[m]);
-    }
+      else {
+        list = Object.keys(config.modules).filter((m) => {
+          const entry: any = (config.modules as any)[m];
+          if (typeof entry === 'boolean') return entry;
+          if (entry && typeof entry === 'object') return entry.enabled !== false;
+          return false;
+        });
+      }
   } else {
     list = enabled;
   }

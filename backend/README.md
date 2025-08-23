@@ -68,3 +68,10 @@ Analysiert die semantische Struktur einer Seite und bewertet, ob Inhalte in
 Landmark-Bereichen wie `main`, `banner`, `nav` oder `contentinfo` liegen.
 Berichtet Abdeckungsquote, listet fehlende oder doppelte Landmarks und liefert
 HTML-Snippets zur Behebung.
+
+### links
+
+Analysiert Linktexte hinsichtlich Aussagekraft und Konsistenz. Meldet generische
+Texte wie "hier" oder "mehr", nackte URLs sowie gleiche Linktexte mit
+verschiedenen Zielen bzw. gleiche Ziele mit stark abweichenden Linktexten.
+Erkennt außerdem Icon-Links ohne zugängliche Beschriftung. Bezug: WCAG 2.4.4 / BITV 2.0.

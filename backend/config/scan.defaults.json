@@ -6,7 +6,8 @@
     "forms": true,
     "downloads": true,
     "landmarks": true,
-    "headings-outline": true
+    "headings-outline": true,
+    "links": true
   },
   "profiles": {
     "fast": [
@@ -15,7 +16,8 @@
       "forms",
       "downloads",
       "landmarks",
-      "headings-outline"
+      "headings-outline",
+      "links"
     ],
     "full": [
       "*"

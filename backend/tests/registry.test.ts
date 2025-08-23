@@ -6,11 +6,12 @@ import { getModules } from '../core/registry.js';
 test('getModules loads modules from profile', async () => {
   const cfg = await loadConfig(['--profile', 'fast']);
   const mods = await getModules([], cfg.profile, cfg);
-  const slugs = mods.map(m => m.slug);
-  assert.ok(slugs.includes('dom-aria'));
-  assert.ok(slugs.includes('forms'));
-  assert.ok(slugs.includes('headings-outline'));
-});
+    const slugs = mods.map(m => m.slug);
+    assert.ok(slugs.includes('dom-aria'));
+    assert.ok(slugs.includes('forms'));
+    assert.ok(slugs.includes('headings-outline'));
+    assert.ok(slugs.includes('links'));
+  });
 
 test('getModules wildcard', async () => {
   const cfg = await loadConfig();
