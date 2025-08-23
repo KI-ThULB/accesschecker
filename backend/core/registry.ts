@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Module, ScanConfig } from './types.js';
+import type { Module, ScanConfig } from './types.js';
 
 const registered = new Map<string, Module>();
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { Module, Finding } from '../../core/types.js';
+import type { Module, Finding } from '../../core/types.js';
 import { FOCUSABLE_SELECTOR } from '../../src/focus.js';
 
 function cssPath(el: HTMLElement): string {

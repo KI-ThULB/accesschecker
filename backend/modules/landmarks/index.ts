@@ -1,4 +1,4 @@
-import { Module, Finding } from '../../core/types.js';
+import type { Module, Finding } from '../../core/types.js';
 
 export type RemediationHint = {
   title: string;

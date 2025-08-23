@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { Command } from 'commander';
 import Ajv from 'ajv';
-import { ScanConfig } from './types.js';
+import type { ScanConfig } from './types.js';
 
 export async function loadConfig(argv: string[] = process.argv.slice(2)): Promise<ScanConfig> {
   const configDir = path.join(process.cwd(), 'config');

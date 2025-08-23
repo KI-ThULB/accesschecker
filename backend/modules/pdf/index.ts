@@ -1,4 +1,4 @@
-import { Module } from '../../core/types.js';
+import type { Module } from '../../core/types.js';
 
 const mod: Module = {
   slug: 'pdf',

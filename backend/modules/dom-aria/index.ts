@@ -1,5 +1,5 @@
 import axe from 'axe-core';
-import { Module, Severity, Finding, NormRefs } from '../../core/types.js';
+import type { Module, Severity, Finding, NormRefs } from '../../core/types.js';
 import rulesMapping from '../../config/rules_mapping.json' assert { type: 'json' };
 
 const map: Record<string, { wcag?: string[]; bitv?: string[]; severity?: Severity }> = rulesMapping as any;
