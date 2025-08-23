@@ -2,13 +2,13 @@
   "profile": "fast",
   "modules": {
     "dom-aria": true,
-    "keyboard-focus": true,
+    "keyboard-visibility": true,
     "forms": true,
     "downloads": true,
     "semantics-landmarks": true
   },
   "profiles": {
-    "fast": ["dom-aria","keyboard-focus","forms","downloads","semantics-landmarks"],
+    "fast": ["dom-aria","keyboard-visibility","forms","downloads","semantics-landmarks"],
     "full": ["*"]
   },
   "maxPages": 100,

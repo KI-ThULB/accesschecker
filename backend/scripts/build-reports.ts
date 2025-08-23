@@ -142,10 +142,10 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${dlRows || '<tr><td colspan="4"><small>Keine prüfbaren Downloads.</small></td></tr>'}</tbody>
     </table>
 
-    <h2>Dynamische Interaktionen</h2>
+    <h2>Tastatur &amp; Fokus</h2>
     <table>
-      <thead><tr><th>URL</th><th>Aktion</th><th>Selektor</th><th>Zeit</th></tr></thead>
-      <tbody>${(dynamic||[]).map((d:any)=>`<tr><td>${escapeHtml(d.url)}</td><td>${escapeHtml(d.action)}</td><td>${escapeHtml(d.selector)}</td><td>${escapeHtml(d.timestamp)}</td></tr>`).join('') || '<tr><td colspan="4"><small>Keine Interaktionen protokolliert.</small></td></tr>'}</tbody>
+      <thead><tr><th>Element</th><th>Regel</th><th>Contrast</th><th>AreaRatio</th><th>Screenshot</th></tr></thead>
+      <tbody>${(dynamic||[]).map((d:any)=>`<tr><td><code>${escapeHtml(d.selector||'')}</code></td><td>${escapeHtml(d.rule||'')}</td><td>${d.indicatorContrast?escapeHtml(d.indicatorContrast.toFixed(2)):'-'}</td><td>${d.indicatorAreaRatio?escapeHtml(d.indicatorAreaRatio.toFixed(3)):'-'}</td><td>${d.screenshot?`<a href="${escapeHtml(d.screenshot)}">Bild</a>`:''}</td></tr>`).join('') || '<tr><td colspan="5"><small>Keine Tastaturinteraktionen protokolliert.</small></td></tr>'}</tbody>
     </table>
 
     <p><small>Hinweis: Automatisierte Prüfung (axe-core, heuristische Datei-Checks). Für Rechtsverbindlichkeit ggf. ergänzende manuelle Prüfungen.</small></p>
@@ -159,7 +159,11 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   }
   const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
-  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  const hasFocus = nonLandmarks.some((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
+  if (hasFocus && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
+    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'] });
+  }
   const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
   const dlTop = deriveTopFindings(dlIssues, 3);
   const today = new Date().toISOString().slice(0,10);
@@ -183,7 +187,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "office:alttext-review": "Office-Bilder: Alt-Texte prüfen",
     "csv:encoding": "Datei nicht UTF-8 kodiert",
     "csv:line-endings": "Uneinheitliche Zeilenenden",
-    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
+    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen",
+    "keyboard:focus-indicator-weak": "Fokus-Indikator unzureichend",
+    "keyboard:outline-suppressed": "Fokus-Indikator unterdrückt"
   };
 
   const topListBase = top.length
@@ -266,7 +272,11 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
   }
   const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
-  const top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  const hasFocus = nonLandmarks.some((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
+  if (hasFocus && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
+    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'] });
+  }
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {
     "link-name": "Links haben kein erkennbares Ziel",
@@ -287,7 +297,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
     "office:alttext-review": "Office-Bilder: Alt-Texte prüfen",
     "csv:encoding": "Datei nicht UTF-8 kodiert",
     "csv:line-endings": "Uneinheitliche Zeilenenden",
-    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen"
+    "csv:delimiter-mismatch": "Inkonsistente Trennzeichen",
+    "keyboard:focus-indicator-weak": "Fokus-Indikator unzureichend",
+    "keyboard:outline-suppressed": "Fokus-Indikator unterdrückt"
   };
 
   return {
