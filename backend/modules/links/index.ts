@@ -2,20 +2,6 @@ import { Module, Finding } from '../../core/types.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-export type LinkFinding = {
-  id:
-    | 'links:nondescriptive'
-    | 'links:raw-url'
-    | 'links:text-dup-different-target'
-    | 'links:target-dup-different-text'
-    | 'links:icon-only';
-  severity: 'minor' | 'moderate' | 'serious';
-  summary: string;
-  details?: string;
-  selectors?: string[];
-  metrics?: Record<string, number | string>;
-};
-
 export type LinksStats = {
   total: number;
   nondescriptive: number;
