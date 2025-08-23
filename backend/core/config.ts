@@ -24,8 +24,8 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
   program.parse(argv, { from: 'user' });
   const opts = program.opts();
 
-  const config: ScanConfig = { ...defaults };
-  if (opts.profile) config.profile = opts.profile;
+    const config: ScanConfig = { ...defaults } as any;
+    if (opts.profile) config.profile = opts.profile;
   if (opts.modules) {
     const mods: Record<string, boolean> = {};
     for (const m of String(opts.modules).split(',')) mods[m.trim()] = true;
@@ -35,10 +35,21 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
 
   // env overrides (e.g., PROFILE, MODULES)
   if (process.env.PROFILE) config.profile = process.env.PROFILE;
-  if (process.env.MODULES) {
-    const mods: Record<string, boolean> = {};
-    for (const m of process.env.MODULES.split(',')) mods[m.trim()] = true;
-    config.modules = mods;
+    if (process.env.MODULES) {
+      const mods: Record<string, boolean> = {};
+      for (const m of process.env.MODULES.split(',')) mods[m.trim()] = true;
+      config.modules = mods;
+    }
+
+    try {
+      const profPath = path.join(process.cwd(), 'profiles', `${config.profile}.json`);
+      const profCfg = JSON.parse(await fs.readFile(profPath, 'utf-8'));
+      if (profCfg.modules) config.modules = { ...config.modules, ...profCfg.modules };
+      for (const k of Object.keys(profCfg)) {
+        if (k === 'modules') continue;
+        (config as any)[k] = profCfg[k];
+      }
+    } catch {}
+
+    return config;
   }
-  return config;
-}

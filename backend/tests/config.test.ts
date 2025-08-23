@@ -6,6 +6,7 @@ test('loadConfig merges profile modules', async () => {
   const cfg = await loadConfig(['--profile', 'fast']);
   assert.equal(cfg.profile, 'fast');
   assert.equal(cfg.modules['dom-aria'], true);
+  assert.equal(typeof cfg.modules['links'], 'object');
 });
 
 test('modules override via cli', async () => {

@@ -53,7 +53,7 @@ export interface LogEvent {
 
 export interface ScanConfig {
   profile: string;
-  modules: Record<string, boolean>;
+    modules: Record<string, any>;
   profiles: Record<string, string[]>;
   url?: string;
   [key: string]: unknown;

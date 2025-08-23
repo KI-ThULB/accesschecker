@@ -3,10 +3,15 @@
   "type": "object",
   "properties": {
     "profile": { "type": "string" },
-    "modules": {
-      "type": "object",
-      "additionalProperties": { "type": "boolean" }
-    },
+      "modules": {
+        "type": "object",
+        "additionalProperties": {
+          "anyOf": [
+            { "type": "boolean" },
+            { "type": "object" }
+          ]
+        }
+      },
     "profiles": {
       "type": "object",
       "additionalProperties": {
