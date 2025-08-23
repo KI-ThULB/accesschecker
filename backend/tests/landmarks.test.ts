@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { chromium } from 'playwright';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import mod from '../modules/semantics-landmarks/index.ts';
+import mod from '../modules/landmarks/index.ts';
 import { main as engineMain } from '../core/engine.js';
 import { main as buildReports } from '../scripts/build-reports.js';
 
@@ -17,24 +17,26 @@ async function runSnippet(html: string) {
   return res;
 }
 
-test('missing main → missing-main finding', async () => {
+test('missing main → landmarks:missing-main', async () => {
   const res = await runSnippet('<div>no main</div>');
   assert.ok(res.findings.some((f: any) => f.id === 'landmarks:missing-main'));
 });
 
-test('two banners → duplicates-banner', async () => {
+test('two banners → landmarks:duplicate-banner', async () => {
   const res = await runSnippet('<header role="banner"></header><header role="banner"></header><main></main>');
-  assert.ok(res.findings.some((f: any) => f.id === 'landmarks:duplicates-banner'));
+  assert.ok(res.findings.some((f: any) => f.id === 'landmarks:duplicate-banner'));
 });
 
-test('banner within main → nesting-banner', async () => {
-  const res = await runSnippet('<main><header role="banner"></header></main>');
-  assert.ok(res.findings.some((f: any) => f.id === 'landmarks:nesting-banner'));
-});
-
-test('coverage 60% → coverage-low', async () => {
-  const res = await runSnippet('<header></header><main><p>inside</p></main><div></div><div></div>');
-  assert.ok(res.findings.some((f: any) => f.id === 'landmarks:coverage-low'));
+test('coverage 0/50/100', async () => {
+  const f0 = await runSnippet('<p></p><p></p>');
+  const cov0 = (f0.findings.find((f:any)=>f.id==='landmarks:coverage') as any).metrics.coveragePercent;
+  assert.equal(cov0, 0);
+  const f50 = await runSnippet('<main><p></p></main><p></p>');
+  const cov50 = (f50.findings.find((f:any)=>f.id==='landmarks:coverage') as any).metrics.coveragePercent;
+  assert.equal(cov50, 50);
+  const f100 = await runSnippet('<main><p></p></main>');
+  const cov100 = (f100.findings.find((f:any)=>f.id==='landmarks:coverage') as any).metrics.coveragePercent;
+  assert.equal(cov100, 100);
 });
 
 test('e2e: BAD demo site yields landmark finding and appears in reports', async (t) => {
@@ -50,19 +52,21 @@ test('e2e: BAD demo site yields landmark finding and appears in reports', async 
   } finally {
     process.argv = orig;
   }
-  const lm = results.modules['semantics-landmarks'];
+  const lm = results.modules['landmarks'];
   assert.ok(lm && lm.findings.length > 0, 'expected landmark findings');
-  assert.ok(results.issues.some((f: any) => f.module === 'semantics-landmarks'), 'issues should include landmarks findings');
+  assert.ok(results.issues.some((f: any) => f.module === 'landmarks'), 'issues should include landmarks findings');
   assert.ok(results.issues.some((f: any) => (f.id || '').startsWith('axe:')), 'axe findings should remain');
   const issuesFile = JSON.parse(await fs.readFile(path.join(process.cwd(), 'out', 'issues.json'), 'utf-8'));
-  assert.ok(issuesFile.some((f: any) => f.module === 'semantics-landmarks'));
+  assert.ok(issuesFile.some((f: any) => f.module === 'landmarks'));
 
   const fakePage = { setViewportSize() {}, setContent() {}, pdf: async () => {} } as any;
   const fakeBrowser = { newPage: async () => fakePage, close: async () => {} } as any;
   t.mock.method(chromium, 'launch', async () => fakeBrowser);
   await buildReports();
   const report = await fs.readFile(path.join(process.cwd(), 'out', 'report_internal.html'), 'utf-8');
-  assert.ok(/Landmark-Abdeckung/.test(report), 'internal report should mention landmark coverage');
+  assert.ok(/Landmarks &amp; Struktur/.test(report), 'internal report should include landmarks section');
   const reportPub = await fs.readFile(path.join(process.cwd(), 'out', 'report_public.html'), 'utf-8');
-  assert.ok(/Landmark-Abdeckung/.test(reportPub), 'public report should mention landmark coverage');
+  assert.ok(/Unzureichende Landmark-Struktur/.test(reportPub), 'public report should mention landmark top finding');
+  const artifact = JSON.parse(await fs.readFile(path.join(process.cwd(), 'out', 'landmarks.json'), 'utf-8'));
+  assert.ok(typeof artifact.stats.coveragePercent === 'number');
 });

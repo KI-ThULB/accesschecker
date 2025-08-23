@@ -59,3 +59,12 @@ Wichtige Flags:
 - Die Jurisdiktion kann über `--jurisdiction DE-XX` oder in `config/scan.defaults.json` festgelegt werden.
 - Fehlt eine Zuordnung, wird automatisch die Bundes-Schlichtungsstelle verwendet und im JSON markiert.
 - Enthalten Einträge Platzhalter wie `TODO`, wird ein Hinweis im öffentlichen Bericht ausgegeben.
+
+## Module
+
+### landmarks
+
+Analysiert die semantische Struktur einer Seite und bewertet, ob Inhalte in
+Landmark-Bereichen wie `main`, `banner`, `nav` oder `contentinfo` liegen.
+Berichtet Abdeckungsquote, listet fehlende oder doppelte Landmarks und liefert
+HTML-Snippets zur Behebung.

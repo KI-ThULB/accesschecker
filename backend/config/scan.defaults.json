@@ -5,7 +5,7 @@
     "keyboard-visibility": true,
     "forms": true,
     "downloads": true,
-    "semantics-landmarks": true,
+    "landmarks": true,
     "headings-outline": true
   },
   "profiles": {
@@ -14,7 +14,7 @@
       "keyboard-visibility",
       "forms",
       "downloads",
-      "semantics-landmarks",
+      "landmarks",
       "headings-outline"
     ],
     "full": [

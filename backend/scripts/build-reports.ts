@@ -76,8 +76,8 @@ function deriveTopFindings(issues: any[], limit = 8) {
 }
 
 function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any, headings?: any) {
-  const regular = issues.filter((v: any) => v.module !== 'semantics-landmarks');
-  const lmIssues = issues.filter((v: any) => v.module === 'semantics-landmarks');
+  const regular = issues.filter((v: any) => v.module !== 'landmarks');
+  const lmIssues = issues.filter((v: any) => v.module === 'landmarks');
   const rows = regular.slice(0, 300).map((v: any) => {
     const targets = (v.selectors || []).slice(0, 3).map((sel: string) => `<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl || '')}</small>`).join("<br/>");
     const wcag = (v.norms?.wcag || []).join(", "); const bitv = (v.norms?.bitv || []).join(", "); const en = (v.norms?.en301549 || []).join(", ");
@@ -141,7 +141,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${rows || '<tr><td colspan="4"><small>Keine Verstöße ermittelt.</small></td></tr>'}</tbody>
     </table>
 
-    ${landmarks ? `<h2>Struktur &amp; Landmarken</h2><p>Abdeckung: ${escapeHtml(String(landmarks.metrics?.coverage || 0))}%</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${landmarks ? (()=>{ const cov=Math.round(landmarks.metrics?.coverage||0); const b=badge(cov>=95?'green':cov>=80?'yellow':'red'); const snippets=(landmarks.hints||[]).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join(''); return `<h2>Landmarks &amp; Struktur</h2><p>Abdeckung: ${escapeHtml(String(cov))}% ${b}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${snippets?`<details><summary>Behebung</summary>${snippets}</details>`:''}` })() : ''}
     ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
 
     <h2>Prüfung von Downloads</h2>
@@ -165,12 +165,19 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks' && v.module !== 'headings-outline');
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'landmarks' && v.module !== 'headings-outline');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
   if (focusIssues.length && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
     top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'], count: focusIssues.length });
+  }
+  if (landmarks) {
+    const cov = Math.round(landmarks.metrics?.coverage || 0);
+    const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
+    if (cov < 95 || miss) {
+      top.unshift({ id: 'landmarks:summary', text: 'Unzureichende Landmark-Struktur', wcag: ['1.3.1'], count: (landmarks.findings||[]).length || 1 });
+    }
   }
   const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
   const dlTop = deriveTopFindings(dlIssues, 3);
@@ -205,10 +212,12 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     : `<li><small>Keine prioritären Befunde festgestellt.</small></li>`;
 
   let landmarkBullet = '';
-  if (landmarks && (landmarks.findings || []).length) {
+  if (landmarks) {
     const cov = Math.round(landmarks.metrics?.coverage || 0);
     const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
-    landmarkBullet = `<li>${escapeHtml(`Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`)}</li>`;
+    if (cov < 95 || miss) {
+      landmarkBullet = `<li>${escapeHtml(`Unzureichende Landmark-Struktur (${cov}%${miss ? ' / fehlendes <main>' : ''})`)}</li>`;
+    }
   }
   let headingsBullet = '';
   if (headings && (headings.findings || []).length) {
@@ -282,7 +291,7 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
-  const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks' && v.module !== 'headings-outline');
+  const nonLandmarks = issues.filter((v: any) => v.module !== 'landmarks' && v.module !== 'headings-outline');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
@@ -331,7 +340,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
         if (landmarks && (landmarks.findings || []).length) {
           const cov = Math.round(landmarks.metrics?.coverage || 0);
           const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
-          arr.unshift({ id: 'landmarks:summary', text: `Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`, wcag: ['1.3.1'], count: (landmarks.findings || []).length || 1 });
+          if (cov < 95 || miss) {
+            arr.unshift({ id: 'landmarks:summary', text: 'Unzureichende Landmark-Struktur', wcag: ['1.3.1'], count: (landmarks.findings || []).length || 1 });
+          }
         }
         if (headings && (headings.findings || []).length) {
           arr.unshift({ id: 'headings:summary', text: 'Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)', wcag: ['1.3.1','2.4.6'], count: headings.findings.length });
@@ -402,7 +413,7 @@ export async function main() {
   const hasTodo = ['website','email','phone','postalAddress'].some((k) => (authority as any)[k]?.includes('TODO'));
   if (hasTodo) enforcementDataStatus = 'incomplete';
 
-    const landmarks = results.modules?.['semantics-landmarks'];
+    const landmarks = results.modules?.['landmarks'];
     const headings = results.modules?.['headings-outline'];
     const headingPenalty = (publicConfig?.scoreHooks?.['headings-outline'] || 0);
     if (headings && headingPenalty) {
