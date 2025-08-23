@@ -160,9 +160,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
-  const hasFocus = nonLandmarks.some((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
-  if (hasFocus && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
-    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'] });
+  const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
+  if (focusIssues.length && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
+    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'], count: focusIssues.length });
   }
   const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
   const dlTop = deriveTopFindings(dlIssues, 3);
@@ -273,9 +273,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
   const nonLandmarks = issues.filter((v: any) => v.module !== 'semantics-landmarks');
   const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
   let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
-  const hasFocus = nonLandmarks.some((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
-  if (hasFocus && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
-    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'] });
+  const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
+  if (focusIssues.length && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
+    top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'], count: focusIssues.length });
   }
   const preparedOn = new Date().toISOString().slice(0,10);
   const plainMap: Record<string, string> = {
@@ -315,11 +315,11 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
       "standard": profile.legal?.standard || "WCAG 2.1 / EN 301 549 / BITV 2.0",
       "method": profile.legal?.method || "automatisierte Selbstbewertung",
       "topFindings": (() => {
-        const arr = top.map(t => ({ id: t.id, text: plainMap[t.id] || t.text, wcag: t.wcag }));
+        const arr = top.map(t => ({ id: t.id, text: plainMap[t.id] || t.text, wcag: t.wcag, count: t.count }));
         if (landmarks && (landmarks.findings || []).length) {
           const cov = Math.round(landmarks.metrics?.coverage || 0);
           const miss = (landmarks.findings || []).some((f: any) => f.id === 'landmarks:missing-main');
-          arr.unshift({ id: 'landmarks:summary', text: `Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`, wcag: ['1.3.1'] });
+          arr.unshift({ id: 'landmarks:summary', text: `Landmark-Abdeckung ${cov}%${miss ? ' / fehlendes <main>' : ''}`, wcag: ['1.3.1'], count: (landmarks.findings || []).length || 1 });
         }
         return arr;
       })()
