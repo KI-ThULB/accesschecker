@@ -69,6 +69,10 @@ Landmark-Bereichen wie `main`, `banner`, `nav` oder `contentinfo` liegen.
 Berichtet Abdeckungsquote, listet fehlende oder doppelte Landmarks und liefert
 HTML-Snippets zur Behebung.
 
+### skiplinks
+
+Erkennt Skip-Links zu Hauptinhalten und prüft deren Ziel und Fokusverhalten. Meldet fehlende oder späte Sprungmarken sowie fehlende Ziele. Bezug: WCAG 2.4.1 / BITV 2.0.
+
 ### links
 
 Analysiert Linktexte hinsichtlich Aussagekraft und Konsistenz. Meldet generische
