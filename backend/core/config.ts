@@ -21,7 +21,8 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
     .option('--profile <profile>')
     .option('--modules <modules>')
     .option('--url <url>')
-    .option('--no-images');
+    .option('--no-images')
+    .option('--no-skiplinks');
   program.parse(argv, { from: 'user' });
   const opts = program.opts();
 
@@ -35,6 +36,7 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
   }
   if (opts.url) config.url = opts.url;
   if (opts.images === false) config.modules = { ...config.modules, images: false };
+  if (opts.skiplinks === false) config.modules = { ...config.modules, skiplinks: false };
 
   // env overrides (e.g., PROFILE, MODULES)
   if (process.env.PROFILE) config.profile = process.env.PROFILE;

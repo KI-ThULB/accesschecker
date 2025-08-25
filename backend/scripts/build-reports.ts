@@ -75,7 +75,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any, headings?: any, links?: any, images?: any) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
   const regular = issues.filter((v: any) => v.module !== 'landmarks');
   const lmIssues = issues.filter((v: any) => v.module === 'landmarks');
   const rows = regular.slice(0, 300).map((v: any) => {
@@ -110,6 +110,13 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   const linkShare = links ? Math.round((100 - (links.stats?.shareWeak || 0)) * 10) / 10 : 0;
   const linkBadge = links ? badge(linkShare >= 95 ? 'green' : linkShare >= 80 ? 'yellow' : 'red') : '';
   const linkSnippets = links ? (links.hints || []).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join('') : '';
+  const skipRows = skiplinks ? (skiplinks.findings || []).map((v:any)=>{
+    const targets = (v.selectors||[]).slice(0,3).map((sel:string)=>`<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl||'')}</small>`).join('<br/>');
+    const wcag = (v.norms?.wcag||[]).join(', ');
+    const bitv = (v.norms?.bitv||[]).join(', ');
+    return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
+  }).join('') : '';
+  const skipBadge = skiplinks ? (()=>{ const v=skiplinks.stats?.valid||0; const l=skiplinks.stats?.late||0; return badge(v>=1&&l===0?'green':v>=1?'yellow':'red'); })() : '';
 
   const imageRows = images ? (images.findings || []).map((v:any)=>{
     const targets = (v.selectors||[]).slice(0,3).map((sel:string)=>`<code>${escapeHtml(sel)}</code>`).join('<br/>');
@@ -161,6 +168,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
 
     ${landmarks ? (()=>{ const cov=Math.round(landmarks.metrics?.coverage||0); const b=badge(cov>=95?'green':cov>=80?'yellow':'red'); const snippets=(landmarks.hints||[]).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join(''); return `<h2>Landmarks &amp; Struktur</h2><p>Abdeckung: ${escapeHtml(String(cov))}% ${b}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${snippets?`<details><summary>Behebung</summary>${snippets}</details>`:''}` })() : ''}
     ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${skiplinks ? `<h2>Skip-Links &amp; Sprungziele</h2><p>Skip-Links: ${skiplinks.stats?.total || 0} ${skipBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${skipRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${links ? `<h2>Links &amp; Linktexte</h2><p>Sprechende Linktexte: ${linkShare}% ${linkBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${linkRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${linkSnippets?`<details><summary>Behebung</summary>${linkSnippets}</details>`:''}` : ''}
     ${images ? `<h2>Bilder &amp; Alternativtexte</h2><p>Fehlende Alts: ${images.stats?.missingAlt || 0} ${imgBadge} • Dekorativ: ${images.stats?.decorativeCount || 0} • SVG ohne Titel: ${svgMissing}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${imageRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
 
@@ -180,7 +188,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any, links?: any, images?: any) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
@@ -205,7 +213,10 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
   if (images && (images.stats?.missingAlt || 0) > 0) {
     top.unshift({ id: 'images:summary', text: 'Bilder ohne Alternativtexte', wcag: ['1.1.1'], count: images.stats.missingAlt });
   }
-  const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || '')); 
+  if (skiplinks && (skiplinks.findings || []).some((f:any)=>['skiplinks:missing','skiplinks:target-missing'].includes(f.id))) {
+    top.unshift({ id: 'skiplinks:summary', text: 'Kein funktionsfähiger Skip-Link', wcag: ['2.4.1'], count: 1 });
+  }
+  const dlIssues = nonLandmarks.filter((v: any) => /^(pdf:|office:|csv:)/.test(v.id || ''));
   const dlTop = deriveTopFindings(dlIssues, 3);
   const today = new Date().toISOString().slice(0,10);
 
@@ -231,7 +242,8 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "csv:delimiter-mismatch": "Inkonsistente Trennzeichen",
     "keyboard:focus-indicator-weak": "Fokus-Indikator unzureichend",
     "keyboard:outline-suppressed": "Fokus-Indikator unterdrückt",
-    "images:summary": "Bilder ohne Alternativtexte"
+    "images:summary": "Bilder ohne Alternativtexte",
+    "skiplinks:summary": "Kein funktionsfähiger Skip-Link"
   };
 
   const topListBase = top.length
@@ -313,7 +325,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any, links?: any, images?: any) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
@@ -348,7 +360,8 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
     "csv:delimiter-mismatch": "Inkonsistente Trennzeichen",
     "keyboard:focus-indicator-weak": "Fokus-Indikator unzureichend",
     "keyboard:outline-suppressed": "Fokus-Indikator unterdrückt",
-    "images:summary": "Bilder ohne Alternativtexte"
+    "images:summary": "Bilder ohne Alternativtexte",
+    "skiplinks:summary": "Kein funktionsfähiger Skip-Link"
   };
 
   return {
@@ -380,6 +393,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
         }
         if (images && (images.stats?.missingAlt || 0) > 0) {
           arr.unshift({ id: 'images:summary', text: 'Bilder ohne Alternativtexte', wcag: ['1.1.1'], count: images.stats.missingAlt });
+        }
+        if (skiplinks && (skiplinks.findings || []).some((f:any)=>['skiplinks:missing','skiplinks:target-missing'].includes(f.id))) {
+          arr.unshift({ id: 'skiplinks:summary', text: 'Kein funktionsfähiger Skip-Link', wcag: ['2.4.1'], count: 1 });
         }
         return arr;
       })()
@@ -456,15 +472,16 @@ export async function main() {
     // HTML bauen
     const links = results.modules?.['links'];
     const images = results.modules?.['images'];
-    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, landmarks, headings, links, images);
-    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, landmarks, headings, links, images);
+    const skiplinks = results.modules?.['skiplinks'];
+    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, landmarks, headings, links, images, skiplinks);
+    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, landmarks, headings, links, images, skiplinks);
 
     // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, landmarks, headings, links, images);
+    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, landmarks, headings, links, images, skiplinks);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken

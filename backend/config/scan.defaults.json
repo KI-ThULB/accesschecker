@@ -3,6 +3,7 @@
   "modules": {
     "dom-aria": true,
     "keyboard-visibility": true,
+    "skiplinks": true,
     "forms": true,
     "downloads": true,
     "landmarks": true,
@@ -14,6 +15,7 @@
     "fast": [
       "dom-aria",
       "keyboard-visibility",
+      "skiplinks",
       "forms",
       "downloads",
       "landmarks",
