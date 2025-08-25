@@ -7,7 +7,8 @@
     "downloads": true,
     "landmarks": true,
     "headings-outline": true,
-    "links": true
+    "links": true,
+    "images": true
   },
   "profiles": {
     "fast": [
@@ -17,7 +18,8 @@
       "downloads",
       "landmarks",
       "headings-outline",
-      "links"
+      "links",
+      "images"
     ],
     "full": [
       "*"

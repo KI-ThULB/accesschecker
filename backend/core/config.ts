@@ -20,18 +20,21 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
     .allowUnknownOption(true)
     .option('--profile <profile>')
     .option('--modules <modules>')
-    .option('--url <url>');
+    .option('--url <url>')
+    .option('--no-images');
   program.parse(argv, { from: 'user' });
   const opts = program.opts();
 
     const config: ScanConfig = { ...defaults } as any;
     if (opts.profile) config.profile = opts.profile;
+  const modulesOverridden = !!opts.modules;
   if (opts.modules) {
     const mods: Record<string, boolean> = {};
     for (const m of String(opts.modules).split(',')) mods[m.trim()] = true;
     config.modules = mods;
   }
   if (opts.url) config.url = opts.url;
+  if (opts.images === false) config.modules = { ...config.modules, images: false };
 
   // env overrides (e.g., PROFILE, MODULES)
   if (process.env.PROFILE) config.profile = process.env.PROFILE;
@@ -44,7 +47,7 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
     try {
       const profPath = path.join(process.cwd(), 'profiles', `${config.profile}.json`);
       const profCfg = JSON.parse(await fs.readFile(profPath, 'utf-8'));
-      if (profCfg.modules) config.modules = { ...config.modules, ...profCfg.modules };
+      if (profCfg.modules && !modulesOverridden) config.modules = { ...config.modules, ...profCfg.modules };
       for (const k of Object.keys(profCfg)) {
         if (k === 'modules') continue;
         (config as any)[k] = profCfg[k];

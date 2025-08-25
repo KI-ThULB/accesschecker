@@ -4,6 +4,9 @@
       "enabled": true,
       "compareQuery": false,
       "weakTexts": "config/links.weaktexts.de-en.json"
+    },
+    "images": {
+      "enabled": true
     }
   }
 }
