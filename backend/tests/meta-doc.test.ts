@@ -70,7 +70,7 @@ test('e2e BAD demo site includes metaDoc section', async (t) => {
   t.mock.method(chromium, 'launch', async () => fakeBrowser);
   await buildReports();
   const reportInt = await fs.readFile(path.join(process.cwd(), 'out', 'report_internal.html'), 'utf-8');
-  assert.ok(/Dokumentsprache &amp; Titel/.test(reportInt));
+  assert.ok(/Dokumentsprache &amp; Seitentitel/.test(reportInt));
   const reportPub = await fs.readFile(path.join(process.cwd(), 'out', 'report_public.html'), 'utf-8');
-  assert.ok(/Dokumentsprache &amp; Titel/.test(reportPub));
+  assert.ok(/Dokumentsprache &amp; Seitentitel/.test(reportPub));
 });

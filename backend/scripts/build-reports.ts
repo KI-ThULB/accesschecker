@@ -175,7 +175,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
       <tbody>${rows || '<tr><td colspan="4"><small>Keine Verstöße ermittelt.</small></td></tr>'}</tbody>
     </table>
 
-    ${metaDoc ? `<h2>Dokumentsprache &amp; Titel</h2><p>Sprache: ${escapeHtml(metaDoc.stats?.lang || '-') } ${langBadge} • Titel-Länge: ${metaDoc.stats?.titleLength || 0} ${titleBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${metaRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${metaDoc ? `<h2>Dokumentsprache &amp; Seitentitel</h2><p>Sprache: ${escapeHtml(metaDoc.stats?.lang || '-') } ${langBadge} • Titel-Länge: ${metaDoc.stats?.titleLength || 0} ${titleBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${metaRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${landmarks ? (()=>{ const cov=Math.round(landmarks.metrics?.coverage||0); const b=badge(cov>=95?'green':cov>=80?'yellow':'red'); const snippets=(landmarks.hints||[]).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join(''); return `<h2>Landmarks &amp; Struktur</h2><p>Abdeckung: ${escapeHtml(String(cov))}% ${b}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${snippets?`<details><summary>Behebung</summary>${snippets}</details>`:''}` })() : ''}
     ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${skiplinks ? `<h2>Skip-Links &amp; Sprungziele</h2><p>Skip-Links: ${skiplinks.stats?.total || 0} ${skipBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${skipRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
@@ -303,7 +303,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     const rows = (metaDoc.findings || []).map((v:any) => `<li>${escapeHtml(plainMap[v.id] || v.summary || '')}${v.norms?.wcag?.length?` (WCAG: ${escapeHtml(v.norms.wcag.join(', '))})`:''}</li>`).join('');
     const lBadge = badge(metaDoc.stats?.langValid ? 'green' : metaDoc.stats?.lang ? 'yellow' : 'red');
     const tBadge = badge(metaDoc.stats?.titleLength >= 10 ? 'green' : metaDoc.stats?.titleLength ? 'yellow' : 'red');
-    return `<h2>Dokumentsprache &amp; Titel</h2><p>Sprache: ${escapeHtml(metaDoc.stats?.lang || '-') } ${lBadge} • Titel-Länge: ${metaDoc.stats?.titleLength || 0} ${tBadge}</p>${rows ? `<ul>${rows}</ul>` : '<p><small>Keine Befunde.</small></p>'}`;
+    return `<h2>Dokumentsprache &amp; Seitentitel</h2><p>Sprache: ${escapeHtml(metaDoc.stats?.lang || '-') } ${lBadge} • Titel-Länge: ${metaDoc.stats?.titleLength || 0} ${tBadge}</p>${rows ? `<ul>${rows}</ul>` : '<p><small>Keine Befunde.</small></p>'}`;
   })() : '';
 
   const manual = (profile.manualFindings || []).map((m) =>
