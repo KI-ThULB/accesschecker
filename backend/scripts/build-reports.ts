@@ -539,7 +539,7 @@ export async function main() {
   const hasTodo = ['website','email','phone','postalAddress'].some((k) => (authority as any)[k]?.includes('TODO'));
   if (hasTodo) enforcementDataStatus = 'incomplete';
 
-    const metaDoc = results.modules?.['metaDoc'];
+    const metaDoc = results.modules?.['meta-doc'];
     const landmarks = results.modules?.['landmarks'];
     const headings = results.modules?.['headings-outline'];
     const headingPenalty = (publicConfig?.scoreHooks?.['headings-outline'] || 0);
