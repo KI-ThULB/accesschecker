@@ -185,7 +185,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     ${landmarks ? (()=>{ const cov=Math.round(landmarks.metrics?.coverage||0); const b=badge(cov>=95?'green':cov>=80?'yellow':'red'); const snippets=(landmarks.hints||[]).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join(''); return `<h2>Landmarks &amp; Struktur</h2><p>Abdeckung: ${escapeHtml(String(cov))}% ${b}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${snippets?`<details><summary>Behebung</summary>${snippets}</details>`:''}` })() : ''}
     ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${skiplinks ? `<h2>Skip-Links &amp; Sprungziele</h2><p>Skip-Links: ${skiplinks.stats?.total || 0} ${skipBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${skipRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
-    ${forms ? `<h2>Formulare</h2><p>Formularfelder: ${forms.stats?.fields || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${formRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${forms ? `<h2>Formulare</h2><p>Formularfelder: ${forms.stats?.totalFields || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${formRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${links ? `<h2>Links &amp; Linktexte</h2><p>Sprechende Linktexte: ${linkShare}% ${linkBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${linkRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${linkSnippets?`<details><summary>Behebung</summary>${linkSnippets}</details>`:''}` : ''}
     ${images ? `<h2>Bilder &amp; Alternativtexte</h2><p>Fehlende Alts: ${images.stats?.missingAlt || 0} ${imgBadge} • Dekorativ: ${images.stats?.decorativeCount || 0} • SVG ohne Titel: ${svgMissing}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${imageRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
 
@@ -232,8 +232,14 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
       top.unshift({ id: 'landmarks:summary', text: 'Unzureichende Landmark-Struktur', wcag: ['1.3.1'], count: (landmarks.findings||[]).length || 1 });
     }
   }
-  if (forms && (forms.findings || []).length >= 3) {
-    top.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: (forms.findings || []).length });
+  if (forms) {
+    const crit =
+      (forms.stats?.missingLabels || 0) +
+      (forms.stats?.errorsUnbound || 0) +
+      (forms.stats?.requiredUnindicated || 0);
+    if (crit >= 3) {
+      top.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: crit });
+    }
   }
   if (links && ((links.stats?.shareWeak || 0) >= 20 || (links.stats?.dupTextGroups || 0) >= 3)) {
     top.unshift({ id: 'links:summary', text: 'Nicht aussagekräftige Linktexte', wcag: ['2.4.4'], count: (links.findings || []).length || 1 });
@@ -449,8 +455,14 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
         if (headings && (headings.findings || []).length) {
           arr.unshift({ id: 'headings:summary', text: 'Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)', wcag: ['1.3.1','2.4.6'], count: headings.findings.length });
         }
-        if (forms && (forms.findings || []).length >= 3) {
-          arr.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: (forms.findings || []).length });
+        if (forms) {
+          const crit =
+            (forms.stats?.missingLabels || 0) +
+            (forms.stats?.errorsUnbound || 0) +
+            (forms.stats?.requiredUnindicated || 0);
+          if (crit >= 3) {
+            arr.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: crit });
+          }
         }
         if (links && ((links.stats?.shareWeak || 0) >= 20 || (links.stats?.dupTextGroups || 0) >= 3)) {
           arr.unshift({ id: 'links:summary', text: 'Nicht aussagekräftige Linktexte', wcag: ['2.4.4'], count: (links.findings || []).length || 1 });
