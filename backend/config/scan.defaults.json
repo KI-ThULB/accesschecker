@@ -9,7 +9,8 @@
     "landmarks": true,
     "headings-outline": true,
     "links": true,
-    "images": true
+    "images": true,
+    "meta-doc": true
   },
   "profiles": {
     "fast": [
@@ -20,7 +21,8 @@
       "landmarks",
       "headings-outline",
       "links",
-      "images"
+      "images",
+      "meta-doc"
     ],
     "full": [
       "*"

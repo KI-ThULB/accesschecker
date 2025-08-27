@@ -38,7 +38,7 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
   if (opts.url) config.url = opts.url;
   if (opts.images === false) config.modules = { ...config.modules, images: false };
   if (opts.skiplinks === false) config.modules = { ...config.modules, skiplinks: false };
-  if (opts.metaDoc === false) config.modules = { ...config.modules, metaDoc: false };
+  if (opts.metaDoc === false) config.modules = { ...config.modules, 'meta-doc': false };
 
   // env overrides (e.g., PROFILE, MODULES)
   if (process.env.PROFILE) config.profile = process.env.PROFILE;
