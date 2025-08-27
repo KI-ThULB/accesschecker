@@ -12,7 +12,7 @@ const mod: Module = {
     for (const f of fields) (f as any).problems = [] as string[];
 
     const findings: Finding[] = [];
-    const stats: Record<string, number> = {};
+    const stats: Record<string, number> = { fields: fields.length };
 
     function addFinding(id: string, summary: string, details: string, selectors: string[]) {
       const m = map[id] || {};

@@ -75,7 +75,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
   const regular = issues.filter((v: any) => v.module !== 'landmarks');
   const lmIssues = issues.filter((v: any) => v.module === 'landmarks');
   const rows = regular.slice(0, 300).map((v: any) => {
@@ -126,6 +126,12 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
   }).join('') : '';
   const skipBadge = skiplinks ? (()=>{ const v=skiplinks.stats?.valid||0; const l=skiplinks.stats?.late||0; return badge(v>=1&&l===0?'green':v>=1?'yellow':'red'); })() : '';
+  const formRows = forms ? (forms.findings || []).map((v:any)=>{
+    const targets = (v.selectors || []).slice(0,3).map((sel:string)=>`<code>${escapeHtml(sel)}</code><br/><small>${escapeHtml(v.pageUrl||'')}</small>`).join('<br/>');
+    const wcag = (v.norms?.wcag || []).join(', ');
+    const bitv = (v.norms?.bitv || []).join(', ');
+    return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'n/a')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
+  }).join('') : '';
 
   const imageRows = images ? (images.findings || []).map((v:any)=>{
     const targets = (v.selectors||[]).slice(0,3).map((sel:string)=>`<code>${escapeHtml(sel)}</code>`).join('<br/>');
@@ -179,6 +185,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     ${landmarks ? (()=>{ const cov=Math.round(landmarks.metrics?.coverage||0); const b=badge(cov>=95?'green':cov>=80?'yellow':'red'); const snippets=(landmarks.hints||[]).map((h:any)=>`<h3>${escapeHtml(h.title)}</h3><pre><code>${escapeHtml(h.snippet)}</code></pre>`).join(''); return `<h2>Landmarks &amp; Struktur</h2><p>Abdeckung: ${escapeHtml(String(cov))}% ${b}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${lmRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${snippets?`<details><summary>Behebung</summary>${snippets}</details>`:''}` })() : ''}
     ${headings ? `<h2>Überschriften &amp; Dokumentstruktur</h2><p>H1: ${headings.stats?.hasH1 ? 'ja' : 'nein'} • Mehrfach-H1: ${headings.stats?.multipleH1 ? 'ja' : 'nein'} • Max. Tiefe: ${headings.stats?.maxDepth || 0} • Sprünge: ${headings.stats?.jumps || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${headRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${skiplinks ? `<h2>Skip-Links &amp; Sprungziele</h2><p>Skip-Links: ${skiplinks.stats?.total || 0} ${skipBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${skipRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${forms ? `<h2>Formulare</h2><p>Formularfelder: ${forms.stats?.fields || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${formRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${links ? `<h2>Links &amp; Linktexte</h2><p>Sprechende Linktexte: ${linkShare}% ${linkBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${linkRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${linkSnippets?`<details><summary>Behebung</summary>${linkSnippets}</details>`:''}` : ''}
     ${images ? `<h2>Bilder &amp; Alternativtexte</h2><p>Fehlende Alts: ${images.stats?.missingAlt || 0} ${imgBadge} • Dekorativ: ${images.stats?.decorativeCount || 0} • SVG ohne Titel: ${svgMissing}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${imageRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
 
@@ -198,14 +205,13 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
   const nonLandmarks = issues.filter((v: any) => v.module !== 'landmarks' && v.module !== 'headings-outline');
-  const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
-  let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  let top = deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
   if (focusIssues.length && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
     top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'], count: focusIssues.length });
@@ -225,6 +231,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     if (cov < 95 || miss) {
       top.unshift({ id: 'landmarks:summary', text: 'Unzureichende Landmark-Struktur', wcag: ['1.3.1'], count: (landmarks.findings||[]).length || 1 });
     }
+  }
+  if (forms && (forms.findings || []).length >= 3) {
+    top.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: (forms.findings || []).length });
   }
   if (links && ((links.stats?.shareWeak || 0) >= 20 || (links.stats?.dupTextGroups || 0) >= 3)) {
     top.unshift({ id: 'links:summary', text: 'Nicht aussagekräftige Linktexte', wcag: ['2.4.4'], count: (links.findings || []).length || 1 });
@@ -260,6 +269,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
     "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
     "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch",
+    "forms:summary": "Probleme bei Formularbedienung",
     "pdf:untagged": "PDF ohne Tags",
     "pdf:missing-lang": "PDF ohne Sprache",
     "pdf:missing-title": "PDF ohne Titel",
@@ -369,14 +379,13 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
   }
   const nonLandmarks = issues.filter((v: any) => v.module !== 'landmarks' && v.module !== 'headings-outline');
-  const formIssues = nonLandmarks.filter((v: any) => (v.id || '').startsWith('forms:'));
-  let top = formIssues.length ? deriveTopFindings(formIssues, 3) : deriveTopFindings(nonLandmarks, 8);
+  let top = deriveTopFindings(nonLandmarks, 8);
   const focusIssues = nonLandmarks.filter((v: any) => ['keyboard:outline-suppressed','keyboard:focus-indicator-weak'].includes(v.id));
   if (focusIssues.length && !top.some((t:any)=>t.id==='keyboard:focus-indicator-weak')) {
     top.unshift({ id: 'keyboard:focus-indicator-weak', text: 'Fokus-Indikator unzureichend', wcag: ['2.4.7'], count: focusIssues.length });
@@ -394,6 +403,7 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
     "forms:required-not-indicated": "Pflichtfeld nicht gekennzeichnet",
     "forms:missing-fieldset-legend": "Gruppe ohne fieldset/legend",
     "forms:autocomplete-missing-or-wrong": "Autocomplete oder Typ fehlt/falsch",
+    "forms:summary": "Probleme bei Formularbedienung",
     "pdf:untagged": "PDF ohne Tags",
     "pdf:missing-lang": "PDF ohne Sprache",
     "pdf:missing-title": "PDF ohne Titel",
@@ -439,7 +449,10 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
         if (headings && (headings.findings || []).length) {
           arr.unshift({ id: 'headings:summary', text: 'Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)', wcag: ['1.3.1','2.4.6'], count: headings.findings.length });
         }
-  if (links && ((links.stats?.shareWeak || 0) >= 20 || (links.stats?.dupTextGroups || 0) >= 3)) {
+        if (forms && (forms.findings || []).length >= 3) {
+          arr.unshift({ id: 'forms:summary', text: 'Probleme bei Formularbedienung', wcag: ['3.3.2'], count: (forms.findings || []).length });
+        }
+        if (links && ((links.stats?.shareWeak || 0) >= 20 || (links.stats?.dupTextGroups || 0) >= 3)) {
           arr.unshift({ id: 'links:summary', text: 'Nicht aussagekräftige Linktexte', wcag: ['2.4.4'], count: (links.findings || []).length || 1 });
         }
         if (images && (images.stats?.missingAlt || 0) > 0) {
@@ -525,15 +538,16 @@ export async function main() {
     const links = results.modules?.['links'];
     const images = results.modules?.['images'];
     const skiplinks = results.modules?.['skiplinks'];
-    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, metaDoc, landmarks, headings, links, images, skiplinks);
-    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks);
+    const forms = results.modules?.['forms'];
+    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, metaDoc, landmarks, headings, links, images, skiplinks, forms);
+    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms);
 
     // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks);
+    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken
