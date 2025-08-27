@@ -23,6 +23,12 @@ async function runFixture(file: string) {
 test('a-ok.html yields no findings and creates overview artifact', async () => {
   const { res, artifacts } = await runFixture('a-ok.html');
   assert.strictEqual(res.findings.length, 0);
+  assert.strictEqual(res.stats.totalFields, 3);
+  assert.strictEqual(res.stats.missingLabels, 0);
+  assert.strictEqual(res.stats.errorsUnbound, 0);
+  assert.strictEqual(res.stats.requiredUnindicated, 0);
+  assert.strictEqual(res.stats.groupsMissingLegend, 0);
+  assert.strictEqual(res.stats.autocompleteIssues, 0);
   const overview = artifacts['forms_overview.json'];
   assert.ok(Array.isArray(overview) && overview.length > 0);
   const first = overview[0];
@@ -33,34 +39,41 @@ test('missing-label.html reports missing-label', async () => {
   const { res } = await runFixture('missing-label.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:missing-label'));
+  assert.strictEqual(res.stats.missingLabels, 1);
 });
 
 test('multiple-labels.html reports multiple-labels', async () => {
   const { res } = await runFixture('multiple-labels.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:multiple-labels'));
+  assert.strictEqual(res.stats.totalFields, 1);
 });
 
 test('error-not-associated.html reports error-not-associated', async () => {
   const { res } = await runFixture('error-not-associated.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:error-not-associated'));
+  assert.strictEqual(res.stats.errorsUnbound, 1);
 });
 
 test('required-not-indicated.html reports required-not-indicated', async () => {
   const { res } = await runFixture('required-not-indicated.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:required-not-indicated'));
+  assert.strictEqual(res.stats.requiredUnindicated, 1);
 });
 
 test('radio-group-no-fieldset.html reports missing-fieldset-legend', async () => {
   const { res } = await runFixture('radio-group-no-fieldset.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:missing-fieldset-legend'));
+  assert.strictEqual(res.stats.groupsMissingLegend, 1);
+  assert.strictEqual(res.stats.totalFields, 2);
 });
 
 test('autocomplete-wrong.html reports autocomplete-missing-or-wrong', async () => {
   const { res } = await runFixture('autocomplete-wrong.html');
   assert.strictEqual(res.findings.length, 1);
   assert.ok(res.findings.some((f: any) => f.id === 'forms:autocomplete-missing-or-wrong'));
+  assert.strictEqual(res.stats.autocompleteIssues, 1);
 });
