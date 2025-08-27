@@ -44,6 +44,12 @@ test('fixture E: lang vs xml:lang mismatch', async () => {
   assert.ok(res.findings.some((f:any)=>f.id==='meta:lang-xml-mismatch'));
 });
 
+test('fixture F: lang/content mismatch', async () => {
+  const html = '<html lang="de"><head><title>Hallo Welt</title></head><body>The and not is this that with from</body></html>';
+  const res = await runSnippet(html);
+  assert.ok(res.findings.some((f:any)=>f.id==='meta:lang-content-mismatch' && f.severity==='advice'));
+});
+
 test('e2e BAD demo site includes metaDoc section', async (t) => {
   const TEST_URL = 'https://www.w3.org/WAI/demos/bad/';
   const orig = process.argv;

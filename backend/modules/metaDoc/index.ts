@@ -124,7 +124,7 @@ const mod: Module = {
         findings.push({
           id: 'meta:lang-content-mismatch',
           module: 'metaDoc',
-          severity: 'minor',
+          severity: 'advice',
           summary: `Content language seems to be ${detected}`,
           details: '',
           selectors: ['html'],

@@ -1,4 +1,4 @@
-export type Severity = 'critical' | 'serious' | 'moderate' | 'minor';
+export type Severity = 'critical' | 'serious' | 'moderate' | 'minor' | 'advice';
 
 export interface NormRefs {
   wcag?: string[];
