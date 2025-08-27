@@ -10,7 +10,7 @@ const TEST_URL = 'https://www.w3.org/WAI/demos/bad/';
 
 test('forms module reports findings and overview artifact', async (t) => {
   const orig = process.argv;
-  process.argv = process.argv.slice(0,2).concat(['--url', TEST_URL, '--profile', 'fast']);
+  process.argv = process.argv.slice(0,2).concat(['--url', TEST_URL, '--profile', 'full']);
   let results: any;
   try {
     results = await engineMain();
