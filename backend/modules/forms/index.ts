@@ -5,24 +5,23 @@ import { collectFormControls } from '../../src/a11y/forms.js';
 const map: Record<string, { wcag?: string[]; bitv?: string[]; severity?: Severity }> =
   rulesMapping as any;
 
-const mod: Module = {
-  slug: 'forms',
-  version: '0.3.0',
-  async run(ctx) {
-    const { fields, groups } = await ctx.page.evaluate(collectFormControls);
-    for (const f of fields) (f as any).problems = [] as string[];
+  const mod: Module = {
+    slug: 'forms',
+    version: '0.4.0',
+    async run(ctx) {
+      const { fields, groups } = await ctx.page.evaluate(collectFormControls);
+      for (const f of fields) (f as any).hints = (f as any).hints || [];
 
-    const findings: Finding[] = [];
-    const stats = {
-      totalFields: fields.length,
-      missingLabels: 0,
-      errorsUnbound: 0,
-      requiredUnindicated: 0,
-      groupsMissingLegend: 0,
-      autocompleteIssues: 0,
-    };
+      const findings: Finding[] = [];
+      const stats = {
+        totalControls: fields.length,
+        unlabeled: 0,
+        errorNotBound: 0,
+        requiredMissingIndicator: 0,
+        groupsWithoutLegend: 0,
+      };
 
-    type StatKey = keyof typeof stats;
+      type StatKey = keyof typeof stats;
 
     function addFinding(
       id: string,
@@ -50,22 +49,22 @@ const mod: Module = {
     }
 
     for (const f of fields) {
-      const probs: string[] = (f as any).problems;
-      if (!f.labels.length) {
-        probs.push('forms:missing-label');
+      const probs: string[] = (f as any).hints;
+      if (!f.hasLabel) {
+        probs.push('forms:label-missing');
         addFinding(
-          'forms:missing-label',
-          'Form field has no label',
-          'Input/select/textarea element lacks accessible name',
+          'forms:label-missing',
+          'Form control has no label',
+          'Control element lacks accessible name',
           [f.selector],
-          'missingLabels'
+          'unlabeled'
         );
-      } else if (f.labels.length > 1) {
-        probs.push('forms:multiple-labels');
+      } else if (f.names && f.names.length > 1) {
+        probs.push('forms:label-ambiguous');
         addFinding(
-          'forms:multiple-labels',
-          'Form field has multiple labels',
-          'Field is associated with multiple visible labels',
+          'forms:label-ambiguous',
+          'Form control has ambiguous labels',
+          'Control is associated with multiple labels',
           [f.selector]
         );
       }
@@ -77,12 +76,12 @@ const mod: Module = {
           'Validation error not associated',
           'Field has validation attributes but no associated error message via aria-describedby',
           [f.selector],
-          'errorsUnbound'
+          'errorNotBound'
         );
       }
 
       if (f.required) {
-        const txt = (f.labels.join(' ') || '').toLowerCase();
+        const txt = (f.name || '').toLowerCase();
         const visible = txt.includes('*') || /required|erforderlich|pflichtfeld|mandatory|obligatory/.test(txt);
         if (!visible && !f.ariaRequired) {
           probs.push('forms:required-not-indicated');
@@ -91,12 +90,12 @@ const mod: Module = {
             'Required field not indicated',
             'Field marked as required but not indicated in label or aria-required',
             [f.selector],
-            'requiredUnindicated'
+            'requiredMissingIndicator'
           );
         }
       }
 
-      const labelLower = (f.labels.join(' ') + ' ' + f.name).toLowerCase();
+      const labelLower = (f.name + ' ' + f.attrName).toLowerCase();
       let expected: { type?: string; autocomplete?: string } | null = null;
       if (/e-?mail/.test(labelLower)) expected = { type: 'email', autocomplete: 'email' };
       else if (/phone|tel|telefon/.test(labelLower)) expected = { type: 'tel', autocomplete: 'tel' };
@@ -106,13 +105,12 @@ const mod: Module = {
         const ac = (f.autocomplete || '').toLowerCase();
         const acWrong = expected.autocomplete && ac !== expected.autocomplete;
         if (typeWrong || acWrong || !ac) {
-          probs.push('forms:autocomplete-missing-or-wrong');
+          probs.push('forms:autocomplete-missing');
           addFinding(
-            'forms:autocomplete-missing-or-wrong',
+            'forms:autocomplete-missing',
             'Autocomplete/type missing or wrong',
             'Field could benefit from appropriate type or autocomplete',
-            [f.selector],
-            'autocompleteIssues'
+            [f.selector]
           );
         }
       }
@@ -122,20 +120,20 @@ const mod: Module = {
       const g = groups[name];
       if (g.selectors.length > 1 && !g.hasFieldsetLegend) {
         addFinding(
-          'forms:missing-fieldset-legend',
+          'forms:group-missing-legend',
           'Form controls missing fieldset/legend',
           'Group of radio buttons or checkboxes lacks fieldset/legend',
           g.selectors.slice(0, 1),
-          'groupsMissingLegend'
+          'groupsWithoutLegend'
         );
         const target = fields.find((f: any) => f.selector === g.selectors[0]);
-        if (target) (target as any).problems.push('forms:missing-fieldset-legend');
+        if (target) (target as any).hints.push('forms:group-missing-legend');
       }
     }
 
     const overviewPath = await ctx.saveArtifact('forms_overview.json', fields);
-    return { module: 'forms', version: '0.3.0', findings, stats, artifacts: { index: overviewPath } };
-  }
-};
+    return { module: 'forms', version: '0.4.0', findings, stats, artifacts: { overview: overviewPath } };
+    }
+  };
 
 export default mod;

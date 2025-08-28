@@ -9,10 +9,10 @@
   "duplicate-id": { "wcag": ["4.1.1"], "bitv": ["4.1.1"], "severity": "critical" },
   "aria-allowed-attr": { "wcag": ["4.1.2"], "bitv": ["4.1.2"], "severity": "moderate" },
   "aria-allowed-role": { "wcag": ["4.1.2"], "bitv": ["4.1.2"], "severity": "moderate" },
-  "forms:missing-label": { "wcag": ["1.3.1", "4.1.2"], "bitv": ["1.3.1", "4.1.2"], "severity": "serious" },
-  "forms:multiple-labels": { "wcag": ["3.3.2", "4.1.2"], "bitv": ["3.3.2", "4.1.2"], "severity": "moderate" },
-  "forms:error-not-associated": { "wcag": ["3.3.1", "3.3.3"], "bitv": ["3.3.1", "3.3.3"], "severity": "serious" },
-  "forms:required-not-indicated": { "wcag": ["3.3.2"], "bitv": ["3.3.2"], "severity": "moderate" },
-  "forms:missing-fieldset-legend": { "wcag": ["1.3.1"], "bitv": ["1.3.1"], "severity": "moderate" },
-  "forms:autocomplete-missing-or-wrong": { "wcag": ["1.3.5"], "bitv": ["1.3.5"], "severity": "minor" }
+  "forms:label-missing": { "wcag": ["1.3.1", "4.1.2"], "bitv": ["1.3.1", "4.1.2"], "severity": "moderate" },
+  "forms:label-ambiguous": { "wcag": ["3.3.2", "4.1.2"], "bitv": ["3.3.2", "4.1.2"], "severity": "minor" },
+  "forms:error-not-associated": { "wcag": ["3.3.1", "3.3.3"], "bitv": ["3.3.1", "3.3.3"], "severity": "moderate" },
+  "forms:required-not-indicated": { "wcag": ["3.3.2"], "bitv": ["3.3.2"], "severity": "minor" },
+  "forms:group-missing-legend": { "wcag": ["1.3.1"], "bitv": ["1.3.1"], "severity": "minor" },
+  "forms:autocomplete-missing": { "wcag": ["1.3.5"], "bitv": ["1.3.5"], "severity": "advice" }
 }
