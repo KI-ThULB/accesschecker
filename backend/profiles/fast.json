@@ -10,6 +10,9 @@
     },
     "meta-doc": {
       "enabled": true
+    },
+    "forms": {
+      "enabled": true
     }
   }
 }

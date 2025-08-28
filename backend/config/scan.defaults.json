@@ -22,7 +22,8 @@
       "headings-outline",
       "links",
       "images",
-      "meta-doc"
+      "meta-doc",
+      "forms"
     ],
     "full": [
       "*"
