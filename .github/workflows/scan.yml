@@ -43,7 +43,7 @@ jobs:
 
       - name: Run modular engine
         working-directory: backend
-        run: npm run scan:engine -- --url "${{ inputs.url }}" --profile "${{ inputs.profile }}"
+        run: npm run scan:engine -- --url "${{ inputs.url }}" --profile "${{ inputs.profile }}" --ignore-https-errors
 
       - name: Build reports (HTML/PDF)
         working-directory: backend

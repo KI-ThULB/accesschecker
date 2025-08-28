@@ -14,7 +14,10 @@ export async function main() {
   const start = new Date();
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: config.ignoreHttpsErrors ?? true
+  });
+  const page = await context.newPage();
   if (config.url) await page.goto(config.url);
 
   const moduleResults: Record<string, ModuleResult> = {};
@@ -49,6 +52,7 @@ export async function main() {
       ctx.log({ level: 'error', module: mod.slug, url: ctx.url, msg: String(e) });
     }
   }
+  await context.close();
   await browser.close();
   const finished = new Date();
 

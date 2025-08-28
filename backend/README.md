@@ -51,6 +51,7 @@ Wichtige Flags:
 - `--scan-iframes` – prüft iframes gleicher Origin
 - `--respect-robots` – beachtet `robots.txt`
 - `--jurisdiction DE-XX` – setzt die zuständige Durchsetzungsstelle (Bund/Land)
+- `--ignore-https-errors` – ignoriert Zertifikatsfehler (`--ignore-https-errors=false` zum Deaktivieren)
 
 ## Durchsetzungsstellen (Bund/Land)
 
