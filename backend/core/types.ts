@@ -57,6 +57,7 @@ export interface ScanConfig {
     modules: Record<string, any>;
   profiles: Record<string, string[]>;
   url?: string;
+  ignoreHttpsErrors?: boolean;
   [key: string]: unknown;
 }
 

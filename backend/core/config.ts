@@ -23,7 +23,8 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
     .option('--url <url>')
     .option('--no-images')
     .option('--no-skiplinks')
-    .option('--no-meta-doc');
+    .option('--no-meta-doc')
+    .option('--ignore-https-errors [bool]');
   program.parse(argv, { from: 'user' });
   const opts = program.opts();
 
@@ -39,6 +40,8 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
   if (opts.images === false) config.modules = { ...config.modules, images: false };
   if (opts.skiplinks === false) config.modules = { ...config.modules, skiplinks: false };
   if (opts.metaDoc === false) config.modules = { ...config.modules, 'meta-doc': false };
+  if (opts.ignoreHttpsErrors !== undefined)
+    (config as any).ignoreHttpsErrors = String(opts.ignoreHttpsErrors) !== 'false';
 
   // env overrides (e.g., PROFILE, MODULES)
   if (process.env.PROFILE) config.profile = process.env.PROFILE;
@@ -47,6 +50,10 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
       for (const m of process.env.MODULES.split(',')) mods[m.trim()] = true;
       config.modules = mods;
     }
+  if (process.env.SCAN_IGNORE_HTTPS_ERRORS !== undefined)
+    (config as any).ignoreHttpsErrors = process.env.SCAN_IGNORE_HTTPS_ERRORS === 'true';
+  if ((config as any).ignoreHttpsErrors === undefined)
+    (config as any).ignoreHttpsErrors = true;
 
     try {
       const profPath = path.join(process.cwd(), 'profiles', `${config.profile}.json`);
