@@ -15,7 +15,7 @@ const mod: Module = {
       const title = (document.querySelector('title')?.textContent || '').trim();
       const lang = (document.documentElement.getAttribute('lang') || '').trim().toLowerCase();
       const xmlLang = (document.documentElement.getAttribute('xml:lang') || '').trim().toLowerCase();
-      const metaCharset = document.querySelector('meta[charset]')?.getAttribute('charset') || '';
+      const charset = document.querySelector('meta[charset]')?.getAttribute('charset') || '';
       const navLang = (navigator.language || '').trim().toLowerCase();
       const langCounts: Record<string, number> = {};
       for (const el of Array.from(document.querySelectorAll('[lang]'))) {
@@ -24,7 +24,7 @@ const mod: Module = {
         langCounts[l] = (langCounts[l] || 0) + 1;
       }
       const domLang = Object.entries(langCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-      return { title, lang, xmlLang, metaCharset, navLang, domLang };
+      return { title, lang, xmlLang, charset, navLang, domLang };
     });
 
     const stats: any = {
@@ -33,7 +33,7 @@ const mod: Module = {
       lang: raw.lang || undefined,
       xmlLang: raw.xmlLang || undefined,
       langValid: true,
-      metaCharset: raw.metaCharset || undefined,
+      charset: raw.charset || undefined,
     };
 
     const findings: Finding[] = [];

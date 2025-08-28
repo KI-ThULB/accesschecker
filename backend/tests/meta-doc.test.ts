@@ -23,6 +23,7 @@ test('fixture A: valid title and lang', async () => {
   assert.equal(res.findings.length, 0);
   assert.equal(res.stats.lang, 'en');
   assert.equal(res.stats.hasTitle, true);
+  assert.equal(res.stats.charset, undefined);
 });
 
 test('fixture B: missing title', async () => {
