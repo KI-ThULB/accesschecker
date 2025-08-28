@@ -1,15 +1,17 @@
 import type { Module, Finding } from '../../core/types.js';
 
+export const defaultConfig = { minTitleLength: 10, enableContentHeuristics: false };
+
 const mod: Module = {
   slug: 'meta-doc',
   version: '0.1.0',
   async run(ctx) {
     const cfg =
       ctx.config.modules?.['meta-doc'] && typeof (ctx.config.modules as any)['meta-doc'] === 'object'
-        ? (ctx.config.modules as any)['meta-doc']
-        : {};
-    const minTitle = cfg.minTitleLength ?? 10;
-    const enableHeuristics = cfg.enableContentHeuristics ?? false;
+        ? { ...defaultConfig, ...(ctx.config.modules as any)['meta-doc'] }
+        : defaultConfig;
+    const minTitle = cfg.minTitleLength;
+    const enableHeuristics = cfg.enableContentHeuristics;
 
     const raw = await ctx.page.evaluate(() => {
       const title = (document.querySelector('title')?.textContent || '').trim();
