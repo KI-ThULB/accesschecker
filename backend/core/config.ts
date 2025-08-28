@@ -24,6 +24,7 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
     .option('--no-images')
     .option('--no-skiplinks')
     .option('--no-meta-doc')
+    .option('--no-text-contrast')
     .option('--ignore-https-errors [bool]');
   program.parse(argv, { from: 'user' });
   const opts = program.opts();
@@ -40,6 +41,7 @@ export async function loadConfig(argv: string[] = process.argv.slice(2)): Promis
   if (opts.images === false) config.modules = { ...config.modules, images: false };
   if (opts.skiplinks === false) config.modules = { ...config.modules, skiplinks: false };
   if (opts.metaDoc === false) config.modules = { ...config.modules, 'meta-doc': false };
+  if ((opts as any).textContrast === false) config.modules = { ...config.modules, 'text-contrast': false };
   if (opts.ignoreHttpsErrors !== undefined)
     (config as any).ignoreHttpsErrors = String(opts.ignoreHttpsErrors) !== 'false';
 

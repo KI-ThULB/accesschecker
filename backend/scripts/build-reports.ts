@@ -75,7 +75,7 @@ function deriveTopFindings(issues: any[], limit = 8) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
+function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], dynamic: any[], metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any, contrast?: any) {
   const regular = issues.filter((v: any) => v.module !== 'landmarks');
   const lmIssues = issues.filter((v: any) => v.module === 'landmarks');
   const rows = regular.slice(0, 300).map((v: any) => {
@@ -140,6 +140,10 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'n/a')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
   }).join('') : '';
   const imgBadge = images ? (()=>{ const share = images.stats?.total? Math.round((images.stats.missingAlt/images.stats.total)*1000)/10:0; return badge(share<=5?'green':share<=20?'yellow':'red'); })() : '';
+  const contrastRows = contrast ? (contrast.findings || []).slice(0,20).map((v:any)=>{
+    const targets = (v.selectors||[]).slice(0,1).map((sel:string)=>`<code>${escapeHtml(sel)}</code>`).join('<br/>');
+    return `<tr><td>${escapeHtml(v.details||'')}</td><td>${targets}</td></tr>`;
+  }).join('') : '';
   const svgMissing = images ? (images.findings||[]).filter((f:any)=>f.id==='images:svg-missing-title').length : 0;
 
   const typeCounts: Record<string, number> = {};
@@ -188,6 +192,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     ${forms ? `<h2>Formulare</h2><p>Formularfelder: ${forms.stats?.totalControls || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${formRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${links ? `<h2>Links &amp; Linktexte</h2><p>Sprechende Linktexte: ${linkShare}% ${linkBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${linkRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${linkSnippets?`<details><summary>Behebung</summary>${linkSnippets}</details>`:''}` : ''}
     ${images ? `<h2>Bilder &amp; Alternativtexte</h2><p>Fehlende Alts: ${images.stats?.missingAlt || 0} ${imgBadge} • Dekorativ: ${images.stats?.decorativeCount || 0} • SVG ohne Titel: ${svgMissing}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${imageRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
+    ${contrast ? `<h2>Text-Kontrast</h2><p>Stichproben: ${contrast.stats?.sampled || 0} • Fails: ${contrast.stats?.failing || 0} • Ø Ratio: ${(contrast.stats?.avgRatio || 0).toFixed(2)}</p><table><thead><tr><th>Details</th><th>Beispiele</th></tr></thead><tbody>${contrastRows || '<tr><td colspan="2"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${contrast.artifacts?.heatmap?`<p><img src="${escapeHtml(contrast.artifacts.heatmap)}" alt="Heatmap" style="max-width:100%"/></p>`:''}` : ''}
 
     <h2>Prüfung von Downloads</h2>
     <table>
@@ -205,7 +210,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
   </body></html>`;
 }
 
-function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
+function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any, contrast?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
@@ -267,6 +272,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     "link-name": "Links haben kein erkennbares Ziel",
     "image-alt": "Bilder ohne Alternativtext",
     "color-contrast": "Texte haben zu wenig Farbkontrast",
+    "contrast:text-low": "Texte haben zu wenig Farbkontrast",
+    "contrast:large-text-low": "Große Texte haben zu wenig Farbkontrast",
+    "contrast:ui-low": "UI-Komponenten haben zu wenig Kontrast",
     "html-has-lang": "Seite nennt keine Sprache",
     "document-title": "Seite hat keinen Titel",
     "forms:label-missing": "Formularfeld ohne Beschriftung",
@@ -385,7 +393,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 }
 
 /** Maschinenlesbare Erklärung (vereinfachtes JSON nach EU-Musterempfehlung) */
-function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any) {
+function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profile, authority: any, enforcementDataStatus?: string, metaDoc?: any, landmarks?: any, headings?: any, links?: any, images?: any, skiplinks?: any, forms?: any, contrast?: any) {
   let status = vereinbarkeitsStatus(summary.totals.violations, summary.score.overall);
   if (summary.totals.violations === 0 && !(profile.manualFindings && profile.manualFindings.length)) {
     status = { ...status, code: "unknown" };
@@ -401,6 +409,9 @@ function buildStatementJSON(summary: ScanSummary, issues: any[], profile: Profil
     "link-name": "Links haben kein erkennbares Ziel",
     "image-alt": "Bilder ohne Alternativtext",
     "color-contrast": "Texte haben zu wenig Farbkontrast",
+    "contrast:text-low": "Texte haben zu wenig Farbkontrast",
+    "contrast:large-text-low": "Große Texte haben zu wenig Farbkontrast",
+    "contrast:ui-low": "UI-Komponenten haben zu wenig Kontrast",
     "html-has-lang": "Seite nennt keine Sprache",
     "document-title": "Seite hat keinen Titel",
     "forms:label-missing": "Formularfeld ohne Beschriftung",
@@ -551,15 +562,16 @@ export async function main() {
     const images = results.modules?.['images'];
     const skiplinks = results.modules?.['skiplinks'];
     const forms = results.modules?.['forms'];
-    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, metaDoc, landmarks, headings, links, images, skiplinks, forms);
-    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms);
+    const contrast = results.modules?.['text-contrast'];
+    const internalHtml = renderInternalHTML(summary, issues, downloadsReport, dynamicInteractions, metaDoc, landmarks, headings, links, images, skiplinks, forms, contrast);
+    const publicHtml = renderPublicHTML(summary, issues, downloadsReport, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms, contrast);
 
     // HTML speichern
   await fs.writeFile(path.join(outDir, "report_internal.html"), internalHtml, "utf-8");
   await fs.writeFile(path.join(outDir, "report_public.html"), publicHtml, "utf-8");
 
   // JSON-Erklärung speichern (maschinenlesbar)
-    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms);
+    const statementJson = buildStatementJSON(summary, issues, profile, authority, enforcementDataStatus, metaDoc, landmarks, headings, links, images, skiplinks, forms, contrast);
   await fs.writeFile(path.join(outDir, "public_statement.json"), JSON.stringify(statementJson, null, 2), "utf-8");
 
   // PDF drucken
