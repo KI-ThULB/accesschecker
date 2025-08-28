@@ -7,6 +7,7 @@ test('loadConfig merges profile modules', async () => {
   assert.equal(cfg.profile, 'fast');
   assert.equal(cfg.modules['dom-aria'], true);
   assert.equal(typeof cfg.modules['links'], 'object');
+  assert.equal(typeof cfg.modules['forms'], 'object');
 });
 
 test('modules override via cli', async () => {
