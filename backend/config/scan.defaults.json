@@ -10,7 +10,8 @@
     "headings-outline": true,
     "links": true,
     "images": true,
-    "meta-doc": true
+    "meta-doc": true,
+    "text-contrast": true
   },
   "profiles": {
     "fast": [
@@ -24,7 +25,8 @@
       "links",
       "images",
       "meta-doc",
-      "forms"
+      "forms",
+      "text-contrast"
     ],
     "full": [
       "*"
