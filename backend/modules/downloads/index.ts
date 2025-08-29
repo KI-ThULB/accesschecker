@@ -9,14 +9,13 @@ const MAX_PER_PAGE = 20;
 const MAX_SIZE_MB = 15;
 
 const findingMeta: Record<string, { severity: Severity; summary: string; norms?: NormRefs }> = {
-  'pdf:untagged': { severity: 'serious', summary: 'PDF is not tagged', norms: { wcag: ['1.3.1'], en301549: ['9.1.3.1'] } },
-  'pdf:missing-lang': { severity: 'moderate', summary: 'PDF document language missing', norms: { wcag: ['3.1.1'] } },
-  'pdf:missing-title': { severity: 'minor', summary: 'PDF document title missing', norms: { wcag: ['2.4.2'] } },
-  'office:missing-core-properties': { severity: 'minor', summary: 'Core document properties missing' },
-  'office:alttext-review': { severity: 'minor', summary: 'Review images for alternative text' },
-  'csv:encoding': { severity: 'minor', summary: 'File not UTF-8 encoded' },
-  'csv:line-endings': { severity: 'minor', summary: 'Inconsistent line endings' },
-  'csv:delimiter-mismatch': { severity: 'minor', summary: 'Inconsistent delimiter usage' },
+  'downloads:pdf-untagged': { severity: 'serious', summary: 'PDF is not tagged', norms: { wcag: ['1.3.1'], en301549: ['9.1.3.1'] } },
+  'downloads:pdf-missing-lang': { severity: 'moderate', summary: 'PDF document language missing', norms: { wcag: ['3.1.1'] } },
+  'downloads:pdf-missing-title': { severity: 'minor', summary: 'PDF document title missing', norms: { wcag: ['2.4.2'] } },
+  'downloads:office-missing-title': { severity: 'minor', summary: 'Office document title missing' },
+  'downloads:office-alttext-review': { severity: 'minor', summary: 'Review images for alternative text' },
+  'downloads:csv-unknown-encoding': { severity: 'minor', summary: 'File not UTF-8 encoded' },
+  'downloads:csv-delimiter-ambiguous': { severity: 'minor', summary: 'Ambiguous delimiter usage' },
 };
 
 function makeFinding(id: keyof typeof findingMeta, pageUrl: string, downloadUrl: string): DownloadFinding {
@@ -50,11 +49,16 @@ const mod: Module = {
 
     const findings: DownloadFinding[] = [];
     const index: any[] = [];
-    const stats: any = { total: unique.length, byType: {} as Record<string, number> };
+    const stats: any = { total: unique.length, pdf: 0, office: 0, csv: 0, txt: 0, zip: 0,
+      pdfUntagged: 0, pdfMissingLang: 0, officeMissingTitle: 0 };
 
     for (const url of unique) {
       const ext = (url.split('.').pop() || '').toLowerCase().split('?')[0];
-      stats.byType[ext] = (stats.byType[ext] || 0) + 1;
+      if (ext === 'pdf') stats.pdf++;
+      else if (['docx','xlsx','pptx'].includes(ext)) stats.office++;
+      else if (ext === 'csv') stats.csv++;
+      else if (ext === 'txt') stats.txt++;
+      else if (ext === 'zip') stats.zip++;
 
       if (ext === 'zip') {
         index.push({ url, pageUrl: ctx.url, type: ext, status: 'skipped' });
@@ -89,22 +93,25 @@ const mod: Module = {
           const r = await analyzePdf(buf);
           const h = createHash('sha1').update(url).digest('hex');
           await ctx.saveArtifact(`pdf_meta/${h}.json`, r);
-          if (!r.tagged) { rec.checks.push('pdf:untagged'); findings.push(makeFinding('pdf:untagged', ctx.url, url)); }
-          if (!r.hasLang) { rec.checks.push('pdf:missing-lang'); findings.push(makeFinding('pdf:missing-lang', ctx.url, url)); }
-          if (!r.hasTitle) { rec.checks.push('pdf:missing-title'); findings.push(makeFinding('pdf:missing-title', ctx.url, url)); }
+          if (!r.tagged) { rec.checks.push('downloads:pdf-untagged'); findings.push(makeFinding('downloads:pdf-untagged', ctx.url, url)); stats.pdfUntagged++; }
+          if (!r.hasLang) { rec.checks.push('downloads:pdf-missing-lang'); findings.push(makeFinding('downloads:pdf-missing-lang', ctx.url, url)); stats.pdfMissingLang++; }
+          if (!r.hasTitle) { rec.checks.push('downloads:pdf-missing-title'); findings.push(makeFinding('downloads:pdf-missing-title', ctx.url, url)); }
+          rec.meta = { pages: r.pages, hasOutline: r.hasOutline };
         } else if (['docx','xlsx','pptx'].includes(ext)) {
           const r = await analyzeOffice(buf, ext as any);
           const h = createHash('sha1').update(url).digest('hex');
           await ctx.saveArtifact(`office_meta/${h}.json`, r);
-          if (!r.hasCoreProps) { rec.checks.push('office:missing-core-properties'); findings.push(makeFinding('office:missing-core-properties', ctx.url, url)); }
-          if (ext === 'pptx' && r.imageRelCount > 0) { rec.checks.push('office:alttext-review'); findings.push(makeFinding('office:alttext-review', ctx.url, url)); }
+          if (!r.title) { rec.checks.push('downloads:office-missing-title'); findings.push(makeFinding('downloads:office-missing-title', ctx.url, url)); stats.officeMissingTitle++; }
+          if (ext === 'pptx' && r.hasAltTextHints) { rec.checks.push('downloads:office-alttext-review'); findings.push(makeFinding('downloads:office-alttext-review', ctx.url, url)); }
+          rec.meta = { title: r.title, creator: r.creator, subject: r.subject,
+            slideCount: r.slideCount, sheetCount: r.sheetCount, hasAltTextHints: r.hasAltTextHints };
         } else if (['csv','txt'].includes(ext)) {
           const r = analyzeCsvTxt(buf);
           const h = createHash('sha1').update(url).digest('hex');
           await ctx.saveArtifact(`text_meta/${h}.json`, r);
-          if (!r.encodingOk) { rec.checks.push('csv:encoding'); findings.push(makeFinding('csv:encoding', ctx.url, url)); }
-          if (!r.lineEndingsOk) { rec.checks.push('csv:line-endings'); findings.push(makeFinding('csv:line-endings', ctx.url, url)); }
-          if (!r.delimiterConsistent) { rec.checks.push('csv:delimiter-mismatch'); findings.push(makeFinding('csv:delimiter-mismatch', ctx.url, url)); }
+          if (r.encoding !== 'utf-8') { rec.checks.push('downloads:csv-unknown-encoding'); findings.push(makeFinding('downloads:csv-unknown-encoding', ctx.url, url)); }
+          if (!r.delimiter || r.delimiterConfidence < 0.2) { rec.checks.push('downloads:csv-delimiter-ambiguous'); findings.push(makeFinding('downloads:csv-delimiter-ambiguous', ctx.url, url)); }
+          rec.meta = { encoding: r.encoding, delimiter: r.delimiter, delimiterConfidence: r.delimiterConfidence };
         }
 
         if (rec.checks.length) rec.status = 'error';

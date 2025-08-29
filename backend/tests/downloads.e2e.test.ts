@@ -37,7 +37,7 @@ test('downloads module discovers and reports files', async (t) => {
     const resJson = JSON.parse(await fs.readFile(path.join('out', 'results.json'), 'utf-8'));
     assert.ok(resJson.modules.downloads.stats.total >= 2);
     const issues = JSON.parse(await fs.readFile(path.join('out', 'issues.json'), 'utf-8'));
-    assert.ok(issues.some((i: any) => /^pdf:|^csv:/.test(i.id)));
+    assert.ok(issues.some((i: any) => /^downloads:/.test(i.id)));
     await buildReports();
     const report = await fs.readFile(path.join('out', 'report_internal.html'), 'utf-8');
     assert.ok(/Pr\u00fcfung von Downloads/.test(report) && !/Keine pr\u00fcfbaren Downloads/.test(report));
