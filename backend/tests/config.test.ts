@@ -15,3 +15,8 @@ test('modules override via cli', async () => {
   assert.equal(Object.keys(cfg.modules).length, 1);
   assert.ok(cfg.modules['forms']);
 });
+
+test('disable forms via flag', async () => {
+  const cfg = await loadConfig(['--no-forms-extended']);
+  assert.strictEqual(cfg.modules['forms'], false);
+});

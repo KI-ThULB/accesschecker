@@ -80,3 +80,16 @@ Analysiert Linktexte hinsichtlich Aussagekraft und Konsistenz. Meldet generische
 Texte wie "hier" oder "mehr", nackte URLs sowie gleiche Linktexte mit
 verschiedenen Zielen bzw. gleiche Ziele mit stark abweichenden Linktexten.
 Erkennt außerdem Icon-Links ohne zugängliche Beschriftung. Bezug: WCAG 2.4.4 / BITV 2.0.
+
+### forms (extended)
+
+Untersucht Formularelemente auf:
+
+- fehlende oder mehrdeutige Beschriftungen
+- nicht verknüpfte Fehlermeldungen
+- fehlende programmatische Kennzeichnung von Pflichtfeldern
+- Gruppen von Radio- und Checkboxfeldern ohne `fieldset`/`legend`
+- fehlende `autocomplete`-Empfehlungen (Hinweis)
+
+Erstellt zudem ein Artefakt `forms_overview.json` mit einem Snapshot aller
+erfassten Felder. Bezug: WCAG 1.3.1 / 3.3.x.
