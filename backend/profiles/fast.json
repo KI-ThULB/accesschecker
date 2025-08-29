@@ -8,9 +8,6 @@
     "images": {
       "enabled": true
     },
-    "forms": {
-      "enabled": true
-    },
     "meta-doc": {
       "enabled": true
     },

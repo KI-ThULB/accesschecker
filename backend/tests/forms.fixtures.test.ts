@@ -7,7 +7,10 @@ import mod from '../modules/forms/index.ts';
 import { getNameInfo } from '../src/a11y/name.ts';
 
 async function runFixture(file: string) {
-  const html = await fs.readFile(path.join(process.cwd(), 'tests', 'fixtures', 'forms', file), 'utf-8');
+  const html = await fs.readFile(
+    path.join(process.cwd(), 'modules', 'forms', '__fixtures__', file),
+    'utf-8'
+  );
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.setContent(html);
