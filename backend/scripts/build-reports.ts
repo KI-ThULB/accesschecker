@@ -58,6 +58,10 @@ function badge(level: "green"|"yellow"|"red") {
   const txt = level === "green" ? "GRÜN" : level === "yellow" ? "GELB" : "ROT";
   return `<span class="badge ${cls}">${txt}</span>`;
 }
+function badgeStat(val: string | number, level: "green"|"yellow"|"red") {
+  const cls = level === "green" ? "green" : level === "yellow" ? "yellow" : "red";
+  return `<span class="badge ${cls}">${val}</span>`;
+}
 function vereinbarkeitsStatus(violations: number, score: number) {
   if (violations === 0) return { label: "vollständig vereinbar", level: "green", code: "full" };
   if (score >= 70) return { label: "teilweise vereinbar", level: "yellow", code: "partial" };
@@ -140,10 +144,20 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     return `<tr><td><b>${escapeHtml(v.id||'')}</b><br/><small>${escapeHtml(v.summary||'')}</small></td><td>${escapeHtml(v.severity||'n/a')}</td><td><small>WCAG: ${escapeHtml(wcag)}<br/>BITV: ${escapeHtml(bitv)}</small></td><td>${targets}</td></tr>`;
   }).join('') : '';
   const imgBadge = images ? (()=>{ const share = images.stats?.total? Math.round((images.stats.missingAlt/images.stats.total)*1000)/10:0; return badge(share<=5?'green':share<=20?'yellow':'red'); })() : '';
-  const contrastRows = contrast ? (contrast.findings || []).slice(0,20).map((v:any)=>{
-    const targets = (v.selectors||[]).slice(0,1).map((sel:string)=>`<code>${escapeHtml(sel)}</code>`).join('<br/>');
-    return `<tr><td>${escapeHtml(v.details||'')}</td><td>${targets}</td></tr>`;
-  }).join('') : '';
+  const contrastRows = contrast ? (()=>{
+    const list = (contrast.findings || []).map((v:any)=>{
+      const m = /Contrast\s+([0-9\.]+):1/.exec(v.details || '');
+      return { ...v, __ratio: m ? parseFloat(m[1]) : 0 };
+    }).sort((a:any,b:any)=>a.__ratio-b.__ratio).slice(0,10);
+    return list.map((v:any)=>{
+      const targets = (v.selectors||[]).slice(0,1).map((sel:string)=>`<code>${escapeHtml(sel)}</code>`).join('<br/>');
+      return `<tr><td>${escapeHtml(v.details||'')}</td><td>${targets}</td></tr>`;
+    }).join('');
+  })() : '';
+  const contrastSample = contrast ? badgeStat(contrast.stats?.sampled || 0, (contrast.stats?.sampled || 0) > 0 ? 'green' : 'red') : '';
+  const contrastFail = contrast ? badgeStat(contrast.stats?.failing || 0, (contrast.stats?.failing || 0) === 0 ? 'green' : 'red') : '';
+  const contrastAvgVal = contrast ? (contrast.stats?.avgRatio || 0) : 0;
+  const contrastAvg = contrast ? badgeStat(contrastAvgVal.toFixed(2), contrastAvgVal >= 4.5 ? 'green' : contrastAvgVal >= 3 ? 'yellow' : 'red') : '';
   const svgMissing = images ? (images.findings||[]).filter((f:any)=>f.id==='images:svg-missing-title').length : 0;
 
   const typeCounts: Record<string, number> = {};
@@ -192,7 +206,7 @@ function renderInternalHTML(summary: ScanSummary, issues: any[], downloadsReport
     ${forms ? `<h2>Formulare</h2><p>Formularfelder: ${forms.stats?.totalControls || 0}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${formRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
     ${links ? `<h2>Links &amp; Linktexte</h2><p>Sprechende Linktexte: ${linkShare}% ${linkBadge}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${linkRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${linkSnippets?`<details><summary>Behebung</summary>${linkSnippets}</details>`:''}` : ''}
     ${images ? `<h2>Bilder &amp; Alternativtexte</h2><p>Fehlende Alts: ${images.stats?.missingAlt || 0} ${imgBadge} • Dekorativ: ${images.stats?.decorativeCount || 0} • SVG ohne Titel: ${svgMissing}</p><table><thead><tr><th>Regel</th><th>Schwere</th><th>Normbezug</th><th>Beispiele</th></tr></thead><tbody>${imageRows || '<tr><td colspan="4"><small>Keine Befunde.</small></td></tr>'}</tbody></table>` : ''}
-    ${contrast ? `<h2>Text-Kontrast</h2><p>Stichproben: ${contrast.stats?.sampled || 0} • Fails: ${contrast.stats?.failing || 0} • Ø Ratio: ${(contrast.stats?.avgRatio || 0).toFixed(2)}</p><table><thead><tr><th>Details</th><th>Beispiele</th></tr></thead><tbody>${contrastRows || '<tr><td colspan="2"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${contrast.artifacts?.heatmap?`<p><img src="${escapeHtml(contrast.artifacts.heatmap)}" alt="Heatmap" style="max-width:100%"/></p>`:''}` : ''}
+    ${contrast ? `<h2>Text-Kontrast</h2><p>Stichproben: ${contrastSample} Fails: ${contrastFail} Ø Ratio: ${contrastAvg}</p><table><thead><tr><th>Details</th><th>Beispiele</th></tr></thead><tbody>${contrastRows || '<tr><td colspan="2"><small>Keine Befunde.</small></td></tr>'}</tbody></table>${contrast.artifacts?.heatmap?`<p><img src="${escapeHtml(contrast.artifacts.heatmap)}" alt="Heatmap" style="max-width:100%"/></p>`:''}` : ''}
 
     <h2>Prüfung von Downloads</h2>
     <table>
@@ -322,6 +336,9 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
     headingsBullet = `<li>${escapeHtml('Unsaubere Überschriftenstruktur (fehlende H1 / Level-Sprünge)')} – ${headings.findings.length}</li>`;
   }
   const topList = landmarkBullet + headingsBullet + topListBase;
+  const perceivableContrast = contrast && (contrast.findings || []).some((f:any)=>f.id==='contrast:text-low')
+    ? `<h3>Wahrnehmbar</h3><p>${escapeHtml(plainMap['contrast:text-low'])}</p>`
+    : '';
 
   const metaSection = metaDoc ? (() => {
     const rows = (metaDoc.findings || []).map((v:any) => `<li>${escapeHtml(plainMap[v.id] || v.summary || '')}${v.norms?.wcag?.length?` (WCAG: ${escapeHtml(v.norms.wcag.join(', '))})`:''}</li>`).join('');
@@ -351,7 +368,7 @@ function renderPublicHTML(summary: ScanSummary, issues: any[], downloadsReport: 
 
     <h2>2. Nicht barrierefreie Inhalte</h2>
     <p>Automatisiert ermittelte Schwerpunkte:</p>
-    <ul>${topList}</ul>
+    <ul>${topList}</ul>${perceivableContrast}
     ${manual ? `<p>Zusätzliche Feststellungen:</p><ul>${manual}</ul>` : ""}
 
     ${dispro ? `<h3>2.1 Inhalte, deren Barrierefreiheit eine unverhältnismäßige Belastung darstellt</h3><ul>${dispro}</ul>` : ""}
