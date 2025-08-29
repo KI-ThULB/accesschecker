@@ -35,6 +35,11 @@
 <p>... weitere {{ issues.length - 10 }} Verstöße im internen Bericht.</p>
 {% endif %}
 
+{% if text_contrast and (text_contrast.findings | selectattr('id','equalto','contrast:text-low') | list | length) > 0 %}
+<h2>Wahrnehmbar</h2>
+<p>Texte haben zu wenig Farbkontrast.</p>
+{% endif %}
+
 <h2>Prüfung von Downloads</h2>
 {% if downloads_report.length > 0 %}
   <p>Von {{ scan.downloadsFound }} geprüften Dateien erfüllen

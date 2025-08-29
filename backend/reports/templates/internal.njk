@@ -9,9 +9,13 @@
     th, td { border: 1px solid #ccc; padding: 6px; }
     th { background: #eee; }
     h1, h2 { margin-top: 30px; }
+    .badge{display:inline-block;padding:4px 8px;border-radius:6px;color:#fff;font-weight:bold}
+    .green{background:#1f8a3b}.yellow{background:#b58900}.red{background:#d11a2a}
   </style>
 </head>
 <body>
+
+{% macro badge(val, cls) %}<span class="badge {{ cls }}">{{ val }}</span>{% endmacro %}
 
 <h1>Interner Barrierefreiheitsbericht</h1>
 <p>Start-URL: {{ scan.startUrl }}</p>
@@ -47,6 +51,25 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if text_contrast %}
+<h2>Text-Kontrast</h2>
+{% set avg = text_contrast.stats.avgRatio or 0 %}
+<p>Stichproben: {{ badge(text_contrast.stats.sampled, 'green') | safe }}
+   Fails: {{ badge(text_contrast.stats.failing, text_contrast.stats.failing > 0 ? 'red':'green') | safe }}
+   Ø Ratio: {{ badge(avg | round(2), avg >= 4.5 ? 'green' : avg >= 3 ? 'yellow' : 'red') | safe }}</p>
+<table>
+  <thead><tr><th>Details</th><th>Beispiele</th></tr></thead>
+  <tbody>
+  {% for f in text_contrast.findings | slice(0,10) %}
+    <tr><td>{{ f.details }}</td><td>{{ f.selectors[0] }}</td></tr>
+  {% endfor %}
+  {% if (text_contrast.findings | length) == 0 %}
+    <tr><td colspan="2">Keine Befunde.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+{% endif %}
 
 <h2>Prüfung von Downloads</h2>
 {% if downloads_report.length > 0 %}
